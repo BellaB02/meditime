@@ -8,7 +8,7 @@ import { OCRService, OCRResult } from "@/services/OCRService";
 
 import { FileUploader } from "./FileUploader";
 import { ImagePreview } from "./ImagePreview";
-import { ScanResult } from "./ScanResult";
+import ScanResult from "./ScanResult"; // Fixed import statement
 
 interface PrescriptionScannerProps {
   onScanComplete: (result: OCRResult) => void;

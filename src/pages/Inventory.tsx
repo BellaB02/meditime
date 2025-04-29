@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { InventoryService, InventoryItem, InventoryTransaction } from "@/services/InventoryService";
+import { Textarea } from "@/components/ui/textarea"; // Add this import
 
 const Inventory = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
