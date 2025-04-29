@@ -24,19 +24,10 @@ export const UserWelcome = ({ firstName, role }: UserWelcomeProps = {}) => {
     });
   };
   
-  if (!currentUser) {
-    return (
-      <div className="mb-8">
-        <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Bienvenue dans votre tableau de bord</h1>
-        <p className="text-muted-foreground">{getCurrentDate()}</p>
-      </div>
-    );
-  }
-  
   return (
     <div className="mb-8">
       <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>
-        Ravi de vous revoir, {firstName || currentUser.name}
+        Ravi de vous revoir{firstName || (currentUser && currentUser.name) ? `, ${firstName || (currentUser && currentUser.name)}` : ''}
       </h1>
       <p className="text-muted-foreground">{getCurrentDate()}</p>
     </div>
