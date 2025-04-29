@@ -64,23 +64,23 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
   const handleDownload = (documentId: string, filePath: string) => {
     try {
       // Créer un lien pour télécharger le fichier PDF
-      const link = document.createElement('a');
+      const link = window.document.createElement('a');
       link.href = filePath;
       
       // Définir un nom de fichier basé sur le titre du document
-      const document = documents.find(doc => doc.id === documentId);
-      const fileName = document ? 
-        `${document.title.replace(/\s+/g, '_').toLowerCase()}.pdf` : 
+      const docToDownload = documents.find(doc => doc.id === documentId);
+      const fileName = docToDownload ? 
+        `${docToDownload.title.replace(/\s+/g, '_').toLowerCase()}.pdf` : 
         'document.pdf';
         
       link.setAttribute('download', fileName);
       
       // Ajouter le lien au document, cliquer dessus, puis le supprimer
-      document.body.appendChild(link);
+      window.document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      window.document.body.removeChild(link);
       
-      toast.success(`Téléchargement du document: ${document?.title || "Document"}`);
+      toast.success(`Téléchargement du document: ${docToDownload?.title || "Document"}`);
     } catch (error) {
       console.error("Erreur lors du téléchargement:", error);
       toast.error("Erreur lors du téléchargement du document");
@@ -189,7 +189,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
                   type="button" 
                   variant="outline" 
                   className="mt-2" 
-                  onClick={() => document.getElementById('documentFile')?.click()}
+                  onClick={() => window.document.getElementById('documentFile')?.click()}
                 >
                   Sélectionner un fichier
                 </Button>
