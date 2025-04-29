@@ -54,6 +54,9 @@ export const usePractice = () => {
     }
   ]);
 
+  // Add currentMember state
+  const [currentMember, setCurrentMember] = useState<Member | null>(members[0]);
+
   // Mettre à jour les informations du cabinet
   const updatePractice = (updatedPractice: Partial<Practice>) => {
     setPractice(prev => ({ ...prev, ...updatedPractice }));
@@ -85,12 +88,23 @@ export const usePractice = () => {
     );
   };
 
+  // Set current member
+  const setCurrentMemberById = (memberId: string) => {
+    const member = members.find(m => m.id === memberId);
+    if (member) {
+      setCurrentMember(member);
+    }
+  };
+
   return {
     practice,
     members,
+    currentMember,
     updatePractice,
     addMember,
     removeMember,
-    updateMember
+    updateMember,
+    setCurrentMember,
+    setCurrentMemberById
   };
 };
