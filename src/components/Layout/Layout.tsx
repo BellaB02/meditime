@@ -2,7 +2,7 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { cn } from "@/lib/utils";
 import Sidebar from './Sidebar';
-import Header from './Header';
+import { Header } from './Header';
 import { useSidebar } from './SidebarProvider';
 
 const getTitleFromPath = (pathname: string): string => {
@@ -48,7 +48,7 @@ const Layout = () => {
         'flex-1 transition-all duration-300',
         isOpen ? 'ml-64' : 'ml-[70px]'
       )}>
-        <Header title={title} />
+        <Header />
         <div className="p-6">
           <Outlet />
         </div>

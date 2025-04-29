@@ -3,12 +3,12 @@ import React, { createContext, useState, useContext } from 'react';
 
 interface SidebarContextType {
   isOpen: boolean;
-  toggle: () => void;
+  toggleSidebar: () => void;
 }
 
 const SidebarContext = createContext<SidebarContextType>({
   isOpen: true,
-  toggle: () => {},
+  toggleSidebar: () => {},
 });
 
 export const useSidebar = () => useContext(SidebarContext);
@@ -16,12 +16,12 @@ export const useSidebar = () => useContext(SidebarContext);
 export const SidebarProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const [isOpen, setIsOpen] = useState(true);
 
-  const toggle = () => {
+  const toggleSidebar = () => {
     setIsOpen(!isOpen);
   };
 
   return (
-    <SidebarContext.Provider value={{ isOpen, toggle }}>
+    <SidebarContext.Provider value={{ isOpen, toggleSidebar }}>
       {children}
     </SidebarContext.Provider>
   );
