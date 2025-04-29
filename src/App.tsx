@@ -22,6 +22,10 @@ import Rounds from "./pages/Rounds";
 import Practice from "./pages/Practice";
 import Auth from "./pages/Auth";
 import PatientDashboard from "./pages/PatientDashboard";
+import CareProtocols from "./pages/CareProtocols";
+import CareProtocolEditor from "./pages/CareProtocolEditor";
+import PatientPortal from "./pages/PatientPortal";
+import PatientMessages from "./pages/PatientMessages";
 
 // Transitions entre les pages
 import { AnimatePresence, motion } from "framer-motion";
@@ -58,6 +62,18 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const PatientRoute = ({ children }: { children: React.ReactNode }) => {
+  const hasAuthentication = localStorage.getItem("sb-ttvuqgcgknkicggsnlke-auth-token") !== null;
+  
+  // Ici on pourrait ajouter une vérification supplémentaire pour le rôle "patient"
+  
+  if (!hasAuthentication) {
+    return <Navigate to="/auth" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -74,12 +90,24 @@ const App = () => {
                   <Routes>
                     <Route path="/auth" element={<Auth />} />
                     
+                    {/* Routes patient */}
                     <Route path="/patient-dashboard" element={
-                      <ProtectedRoute>
+                      <PatientRoute>
                         <PatientDashboard />
-                      </ProtectedRoute>
+                      </PatientRoute>
+                    } />
+                    <Route path="/patient-portal" element={
+                      <PatientRoute>
+                        <PatientPortal />
+                      </PatientRoute>
+                    } />
+                    <Route path="/patient-messages" element={
+                      <PatientRoute>
+                        <PatientMessages />
+                      </PatientRoute>
                     } />
                     
+                    {/* Routes soignant */}
                     <Route element={
                       <ProtectedRoute>
                         <Layout />
@@ -95,6 +123,8 @@ const App = () => {
                       <Route path="/caresheets" element={<CareSheets />} />
                       <Route path="/rounds" element={<Rounds />} />
                       <Route path="/practice" element={<Practice />} />
+                      <Route path="/care-protocols" element={<CareProtocols />} />
+                      <Route path="/care-protocols/:protocolId" element={<CareProtocolEditor />} />
                       <Route path="*" element={<NotFound />} />
                     </Route>
                   </Routes>
