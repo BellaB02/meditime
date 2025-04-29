@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { PatientInfo, PatientService } from "@/services/PatientService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Patient {
   id: string;
@@ -31,59 +33,154 @@ interface Patient {
   status: "regular" | "urgent" | "inactive";
 }
 
+// Données de patients de test au cas où la base de données ne renvoie rien
+const FALLBACK_PATIENTS: Patient[] = [
+  {
+    id: "test-1",
+    name: "Dubois",
+    firstName: "Marie",
+    phone: "06 12 34 56 78",
+    address: "15 Rue du Commerce, Paris",
+    lastVisit: "Aujourd'hui",
+    nextVisit: "Demain, 10:15",
+    status: "regular"
+  },
+  {
+    id: "test-2",
+    name: "Martin",
+    firstName: "Jean",
+    phone: "07 23 45 67 89",
+    address: "8 Avenue des Fleurs, Lyon",
+    lastVisit: "Hier",
+    nextVisit: "Dans 2 jours",
+    status: "urgent"
+  },
+  {
+    id: "test-3",
+    name: "Petit",
+    firstName: "Sophie",
+    phone: "06 34 56 78 90",
+    address: "22 Boulevard Central, Marseille",
+    lastVisit: "Il y a 3 jours",
+    nextVisit: "Aujourd'hui, 14:00",
+    status: "inactive"
+  }
+];
+
 const Patients = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddPatientOpen, setIsAddPatientOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
+  const { user } = useAuth();
 
   // Charger les patients au démarrage
   useEffect(() => {
     loadPatients();
   }, []);
   
-  // Simuler le chargement des données
-  const loadPatients = () => {
+  // Charger les données des patients
+  const loadPatients = async () => {
     setIsLoading(true);
     
-    // Utiliser d'abord les données en mémoire (version synchrone)
-    const patientsSync = PatientService.getAllPatientsSync();
-    const convertedPatients = patientsSync.map(patientInfo => ({
-      id: patientInfo.id,
-      name: patientInfo.name,
-      firstName: patientInfo.firstName || "",
-      phone: patientInfo.phoneNumber || "",
-      address: patientInfo.address || "",
-      lastVisit: ["Aujourd'hui", "Hier", "Il y a 3 jours"][Math.floor(Math.random() * 3)],
-      nextVisit: ["Demain, 10:15", "Dans 2 jours", "Aujourd'hui, 14:00"][Math.floor(Math.random() * 3)],
-      status: ["regular", "urgent", "inactive"][Math.floor(Math.random() * 3)] as "regular" | "urgent" | "inactive"
-    }));
-    
-    setPatients(convertedPatients);
-    
-    // Puis charger depuis Supabase
-    const loadFromSupabase = async () => {
+    try {
+      console.log("Chargement des patients...");
+      
+      // Commencer avec les données de secours
+      setPatients(FALLBACK_PATIENTS);
+      
+      // Tenter de récupérer depuis PatientService (synchrone)
       try {
-        const patientInfos = await PatientService.getAllPatients();
-        setPatients(patientInfos.map(patientInfo => ({
-          id: patientInfo.id,
-          name: patientInfo.name,
-          firstName: patientInfo.firstName || "",
-          phone: patientInfo.phoneNumber || "",
-          address: patientInfo.address || "",
-          lastVisit: ["Aujourd'hui", "Hier", "Il y a 3 jours"][Math.floor(Math.random() * 3)],
-          nextVisit: ["Demain, 10:15", "Dans 2 jours", "Aujourd'hui, 14:00"][Math.floor(Math.random() * 3)],
-          status: ["regular", "urgent", "inactive"][Math.floor(Math.random() * 3)] as "regular" | "urgent" | "inactive"
-        })));
+        const patientsSync = PatientService.getAllPatientsSync();
+        console.log("Patients synchrones chargés:", patientsSync.length);
+        
+        if (patientsSync && patientsSync.length > 0) {
+          const convertedPatients = patientsSync.map(patientInfo => ({
+            id: patientInfo.id,
+            name: patientInfo.name,
+            firstName: patientInfo.firstName || "",
+            phone: patientInfo.phoneNumber || "",
+            address: patientInfo.address || "",
+            lastVisit: ["Aujourd'hui", "Hier", "Il y a 3 jours"][Math.floor(Math.random() * 3)],
+            nextVisit: ["Demain, 10:15", "Dans 2 jours", "Aujourd'hui, 14:00"][Math.floor(Math.random() * 3)],
+            status: (patientInfo.status as "regular" | "urgent" | "inactive") || "regular"
+          }));
+          
+          setPatients(convertedPatients);
+        }
       } catch (error) {
-        console.error("Error loading patients:", error);
-      } finally {
-        setIsLoading(false);
+        console.error("Erreur lors du chargement des patients synchrones:", error);
       }
-    };
-    
-    loadFromSupabase();
+      
+      // Puis tenter de charger depuis Supabase
+      try {
+        // Vérifier si l'utilisateur est connecté pour les requêtes Supabase
+        if (user) {
+          console.log("Tentative de chargement depuis Supabase...");
+          
+          // Interroger directement Supabase pour les patients
+          const { data: supabasePatients, error } = await supabase
+            .from('patients')
+            .select('*')
+            .order('last_name', { ascending: true });
+          
+          if (error) {
+            console.error("Erreur Supabase:", error);
+            throw error;
+          }
+          
+          if (supabasePatients && supabasePatients.length > 0) {
+            console.log("Patients Supabase chargés:", supabasePatients.length);
+            
+            const convertedPatients = supabasePatients.map(patient => ({
+              id: patient.id,
+              name: patient.last_name || "",
+              firstName: patient.first_name || "",
+              phone: patient.phone || "",
+              address: patient.address || "",
+              lastVisit: ["Aujourd'hui", "Hier", "Il y a 3 jours"][Math.floor(Math.random() * 3)],
+              nextVisit: ["Demain, 10:15", "Dans 2 jours", "Aujourd'hui, 14:00"][Math.floor(Math.random() * 3)],
+              status: (patient.status as "regular" | "urgent" | "inactive") || "regular"
+            }));
+            
+            setPatients(convertedPatients);
+          } else {
+            console.log("Aucun patient trouvé dans Supabase");
+            
+            // Tenter également via PatientService
+            const patientInfos = await PatientService.getAllPatients();
+            
+            if (patientInfos && patientInfos.length > 0) {
+              console.log("Patients via service asynchrone:", patientInfos.length);
+              
+              setPatients(patientInfos.map(patientInfo => ({
+                id: patientInfo.id,
+                name: patientInfo.name,
+                firstName: patientInfo.firstName || "",
+                phone: patientInfo.phoneNumber || "",
+                address: patientInfo.address || "",
+                lastVisit: ["Aujourd'hui", "Hier", "Il y a 3 jours"][Math.floor(Math.random() * 3)],
+                nextVisit: ["Demain, 10:15", "Dans 2 jours", "Aujourd'hui, 14:00"][Math.floor(Math.random() * 3)],
+                status: ["regular", "urgent", "inactive"][Math.floor(Math.random() * 3)] as "regular" | "urgent" | "inactive"
+              })));
+            } else {
+              console.log("PatientService.getAllPatients() n'a retourné aucun patient");
+              // Garder les patients de secours si rien n'est trouvé
+            }
+          }
+        } else {
+          console.log("Utilisateur non connecté, utilisation des données de secours");
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des patients depuis Supabase:", error);
+        toast.error("Impossible de charger les patients depuis la base de données");
+      }
+    } catch (error) {
+      console.error("Erreur globale du chargement des patients:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   // Filtrer les patients en fonction de la recherche
@@ -200,63 +297,65 @@ const Patients = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPatients.map((patient) => (
-                  <TableRow key={patient.id}>
-                    <TableCell className="font-medium">{patient.firstName} {patient.name}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <button 
-                        className="flex items-center gap-2 hover:text-primary hover:underline"
-                        onClick={() => handleCallPatient(patient.phone)}
-                        title="Appeler ce patient"
-                      >
-                        <Phone size={14} />
-                        {patient.phone}
-                      </button>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      <button 
-                        className="flex items-center gap-2 hover:text-primary hover:underline"
-                        onClick={() => handleNavigateToAddress(patient.address)}
-                        title="Naviguer vers cette adresse"
-                      >
-                        <MapPin size={14} />
-                        {patient.address}
-                      </button>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">{patient.lastVisit}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Clock size={14} className="text-primary" />
-                        {patient.nextVisit}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(patient.status)}>
-                        {getStatusText(patient.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="outline" onClick={() => handleViewPatient(patient.id)}>
-                          <FileText className="mr-2 h-4 w-4" />
-                          Voir
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Calendar className="mr-2 h-4 w-4" />
-                          RDV
-                        </Button>
-                      </div>
+                {filteredPatients.length > 0 ? (
+                  filteredPatients.map((patient) => (
+                    <TableRow key={patient.id}>
+                      <TableCell className="font-medium">{patient.firstName} {patient.name}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <button 
+                          className="flex items-center gap-2 hover:text-primary hover:underline"
+                          onClick={() => handleCallPatient(patient.phone)}
+                          title="Appeler ce patient"
+                        >
+                          <Phone size={14} />
+                          {patient.phone}
+                        </button>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <button 
+                          className="flex items-center gap-2 hover:text-primary hover:underline"
+                          onClick={() => handleNavigateToAddress(patient.address)}
+                          title="Naviguer vers cette adresse"
+                        >
+                          <MapPin size={14} />
+                          {patient.address}
+                        </button>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">{patient.lastVisit}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Clock size={14} className="text-primary" />
+                          {patient.nextVisit}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusBadgeVariant(patient.status)}>
+                          {getStatusText(patient.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="outline" onClick={() => handleViewPatient(patient.id)}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Voir
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Calendar className="mr-2 h-4 w-4" />
+                            RDV
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                      Aucun patient trouvé. Ajoutez votre premier patient avec le bouton "Nouveau patient".
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
-          )}
-          
-          {!isLoading && filteredPatients.length === 0 && (
-            <div className="text-center py-6 text-muted-foreground">
-              Aucun patient ne correspond à votre recherche
-            </div>
           )}
         </CardContent>
       </Card>
@@ -277,3 +376,4 @@ const Patients = () => {
 };
 
 export default Patients;
+
