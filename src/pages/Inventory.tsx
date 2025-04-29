@@ -1,626 +1,796 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Search, AlertTriangle, Clock, File } from "lucide-react";
-import { inventoryService } from "@/integrations/supabase/services/inventoryService";
+import { 
+  Package, 
+  Search, 
+  Plus, 
+  AlertTriangle, 
+  Clock,
+  ArrowUpDown,
+  ArrowDown,
+  ArrowUp,
+  History,
+  Calendar,
+  Tag,
+  Edit,
+  Trash2
+} from "lucide-react";
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { InventoryService, InventoryItem, InventoryTransaction } from '@/services/InventoryService';
 
-// Type pour les articles d'inventaire
-interface InventoryItem {
-  id: string;
-  name: string;
-  category: string;
-  unit: string;
-  currentQuantity: number;
-  minQuantity: number;
-  expiryDate?: string;
-  notes?: string;
-}
+type SortField = 'name' | 'category' | 'current_quantity' | 'min_quantity' | 'expiry_date';
+type SortOrder = 'asc' | 'desc';
 
-// Type pour les transactions d'inventaire
-interface InventoryTransaction {
-  id: string;
-  itemId: string;
-  itemName: string;
-  transactionType: 'in' | 'out';
-  quantity: number;
-  reason?: string;
-  date: string;
-  batchNumber?: string;
-  expiryDate?: string;
-}
-
-export default function Inventory() {
-  const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
-  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [transactionType, setTransactionType] = useState<'in' | 'out'>('in');
-  const [transactionQuantity, setTransactionQuantity] = useState<number>(0);
-  const [transactionReason, setTransactionReason] = useState<string>("");
-  const [batchNumber, setBatchNumber] = useState<string>("");
-  const [expiryDate, setExpiryDate] = useState<string>("");
+const Inventory = () => {
+  // États pour les données
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([]);
+  const [lowStockItems, setLowStockItems] = useState<InventoryItem[]>([]);
+  const [expiringItems, setExpiringItems] = useState<InventoryItem[]>([]);
   
-  // État pour un nouvel article
-  const [newItem, setNewItem] = useState<{
-    name: string;
-    category: string;
-    unit: string;
-    currentQuantity: string;
-    minQuantity: string;
-    expiryDate?: string;
-    notes?: string;
-  }>({
-    name: "",
-    category: "",
-    unit: "unité",
-    currentQuantity: "0",
-    minQuantity: "0"
-  });
-
-  // Simuler des articles d'inventaire
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  // État pour les filtres et tri
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  
+  // États pour les dialogues
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  
+  // État pour l'article sélectionné
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Categories disponibles
-  const categories = [
-    "Pansements",
-    "Aiguilles",
-    "Seringues",
-    "Gants",
-    "Compresses",
-    "Désinfectants",
-    "Médicaments",
-    "Matériel de perfusion",
-    "Autre"
-  ];
-
-  // Unités disponibles
-  const units = [
-    "unité",
-    "boîte",
-    "paquet",
-    "flacon",
-    "ampoule",
-    "litre",
-    "ml",
-    "gramme",
-    "pièce"
-  ];
-
+  
+  // États pour le formulaire d'article
+  const [formValues, setFormValues] = useState<Partial<InventoryItem>>({
+    name: '',
+    category: '',
+    current_quantity: 0,
+    min_quantity: 0,
+    unit: '',
+    expiry_date: '',
+    notes: ''
+  });
+  
+  // États pour le formulaire de transaction
+  const [transactionValues, setTransactionValues] = useState({
+    quantity: 1,
+    transaction_type: 'stock_in',
+    reason: '',
+    batch_number: '',
+    expiry_date: ''
+  });
+  
+  // État pour le chargement
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Catégories disponibles (à calculer à partir des articles)
+  const [categories, setCategories] = useState<string[]>([]);
+  
   // Charger les données
   useEffect(() => {
-    async function loadInventory() {
+    const loadInventoryData = async () => {
       setIsLoading(true);
       try {
-        // Données simulées en attendant l'implémentation complète
-        const items = [
-          {
-            id: "item-1",
-            name: "Compresses stériles 10x10cm",
-            category: "Compresses",
-            unit: "boîte",
-            currentQuantity: 15,
-            minQuantity: 5,
-            expiryDate: "2026-04-29",
-            notes: "Boîtes de 10 compresses"
-          },
-          {
-            id: "item-2",
-            name: "Seringues 10ml",
-            category: "Seringues",
-            unit: "unité",
-            currentQuantity: 50,
-            minQuantity: 20,
-            expiryDate: "2026-01-15"
-          },
-          {
-            id: "item-3",
-            name: "Gants d'examen taille M",
-            category: "Gants",
-            unit: "boîte",
-            currentQuantity: 3,
-            minQuantity: 5,
-            notes: "Boîte de 100 gants"
-          },
-          {
-            id: "item-4",
-            name: "Pansements adhésifs",
-            category: "Pansements",
-            unit: "boîte",
-            currentQuantity: 8,
-            minQuantity: 3
-          }
-        ];
+        const itemsData = await InventoryService.getAllItems();
+        setItems(itemsData);
         
-        // Simuler des transactions
-        const transactionsData = [
-          {
-            id: "trans-1",
-            itemId: "item-1",
-            itemName: "Compresses stériles 10x10cm",
-            transactionType: 'in' as 'in',
-            quantity: 5,
-            reason: "Approvisionnement",
-            date: "15/04/2025",
-            batchNumber: "LOT2025-234",
-            expiryDate: "29/04/2026"
-          },
-          {
-            id: "trans-2",
-            itemId: "item-3",
-            itemName: "Gants d'examen taille M",
-            transactionType: 'out' as 'out',
-            quantity: 1,
-            reason: "Utilisation tournée",
-            date: "14/04/2025"
-          }
-        ];
+        // Extraire les catégories uniques
+        const uniqueCategories = Array.from(
+          new Set(itemsData.map(item => item.category).filter(Boolean) as string[])
+        );
+        setCategories(uniqueCategories);
         
-        setInventoryItems(items);
-        setTransactions(transactionsData);
+        // Charger les articles à faible stock
+        const lowStock = await InventoryService.getLowStockItems();
+        setLowStockItems(lowStock);
+        
+        // Charger les articles bientôt périmés
+        const expiring = await InventoryService.getExpiringItems(30);
+        setExpiringItems(expiring);
       } catch (error) {
         console.error("Erreur lors du chargement de l'inventaire:", error);
         toast.error("Erreur lors du chargement de l'inventaire");
       } finally {
         setIsLoading(false);
       }
-    }
+    };
     
-    loadInventory();
+    loadInventoryData();
   }, []);
-
-  const filteredItems = inventoryItems.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === "all" || item.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
-
-  const handleAddItem = () => {
-    // Vérification des champs
-    if (!newItem.name || !newItem.category) {
-      toast.error("Veuillez remplir tous les champs obligatoires");
-      return;
-    }
-
-    const item: InventoryItem = {
-      id: `item-${Date.now()}`,
-      name: newItem.name,
-      category: newItem.category,
-      unit: newItem.unit,
-      currentQuantity: parseFloat(newItem.currentQuantity),
-      minQuantity: parseFloat(newItem.minQuantity),
-      expiryDate: newItem.expiryDate,
-      notes: newItem.notes
-    };
-
-    setInventoryItems([...inventoryItems, item]);
-    toast.success("Article ajouté à l'inventaire");
-    setIsAddItemDialogOpen(false);
+  
+  // Appliquer les filtres et le tri
+  useEffect(() => {
+    let result = [...items];
     
-    // Réinitialiser le formulaire
-    setNewItem({
-      name: "",
-      category: "",
-      unit: "unité",
-      currentQuantity: "0",
-      minQuantity: "0"
+    // Filtrer par recherche
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        item => 
+          item.name.toLowerCase().includes(query) || 
+          item.category?.toLowerCase().includes(query) ||
+          item.notes?.toLowerCase().includes(query)
+      );
+    }
+    
+    // Filtrer par catégorie
+    if (categoryFilter !== 'all') {
+      result = result.filter(item => item.category === categoryFilter);
+    }
+    
+    // Trier
+    result.sort((a, b) => {
+      if (sortField === 'name') {
+        return sortOrder === 'asc'
+          ? a.name.localeCompare(b.name)
+          : b.name.localeCompare(a.name);
+      } else if (sortField === 'category') {
+        const categoryA = a.category || '';
+        const categoryB = b.category || '';
+        return sortOrder === 'asc'
+          ? categoryA.localeCompare(categoryB)
+          : categoryB.localeCompare(categoryA);
+      } else if (sortField === 'current_quantity' || sortField === 'min_quantity') {
+        return sortOrder === 'asc'
+          ? a[sortField] - b[sortField]
+          : b[sortField] - a[sortField];
+      } else if (sortField === 'expiry_date') {
+        const dateA = a.expiry_date || '9999-12-31';
+        const dateB = b.expiry_date || '9999-12-31';
+        return sortOrder === 'asc'
+          ? dateA.localeCompare(dateB)
+          : dateB.localeCompare(dateA);
+      }
+      return 0;
+    });
+    
+    setFilteredItems(result);
+  }, [items, searchQuery, categoryFilter, sortField, sortOrder]);
+  
+  // Gestion du tri
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+  
+  // Formatage de la date d'expiration
+  const formatExpiryDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    try {
+      return format(new Date(dateString), 'dd/MM/yyyy', { locale: fr });
+    } catch (error) {
+      return dateString;
+    }
+  };
+  
+  // Gestion des formulaires
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type } = e.target;
+    
+    if (type === 'number') {
+      setFormValues({
+        ...formValues,
+        [name]: parseFloat(value) || 0
+      });
+    } else {
+      setFormValues({
+        ...formValues,
+        [name]: value
+      });
+    }
+  };
+  
+  const handleTransactionInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type } = e.target;
+    
+    if (type === 'number') {
+      setTransactionValues({
+        ...transactionValues,
+        [name]: parseFloat(value) || 0
+      });
+    } else {
+      setTransactionValues({
+        ...transactionValues,
+        [name]: value
+      });
+    }
+  };
+  
+  const handleSelectChange = (name: string, value: string) => {
+    setFormValues({
+      ...formValues,
+      [name]: value
     });
   };
-
-  const handleAddTransaction = () => {
-    if (!selectedItem) {
-      toast.error("Veuillez sélectionner un article");
+  
+  const handleTransactionTypeChange = (value: string) => {
+    setTransactionValues({
+      ...transactionValues,
+      transaction_type: value
+    });
+  };
+  
+  // Gestion des actions sur les articles
+  const handleAddItem = async () => {
+    if (!formValues.name) {
+      toast.error("Le nom de l'article est requis");
       return;
     }
-
-    if (isNaN(transactionQuantity) || transactionQuantity <= 0) {
-      toast.error("Veuillez entrer une quantité valide");
+    
+    try {
+      const newItem = await InventoryService.createItem({
+        name: formValues.name || '',
+        category: formValues.category,
+        current_quantity: formValues.current_quantity || 0,
+        min_quantity: formValues.min_quantity || 0,
+        unit: formValues.unit,
+        expiry_date: formValues.expiry_date,
+        notes: formValues.notes
+      });
+      
+      if (newItem) {
+        setItems([...items, newItem]);
+        setIsAddDialogOpen(false);
+        resetForm();
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'ajout de l'article:", error);
+    }
+  };
+  
+  const handleEditItem = async () => {
+    if (!selectedItem || !formValues.name) {
+      toast.error("Impossible de mettre à jour l'article");
       return;
     }
-
-    // Créer la transaction
-    const transaction: InventoryTransaction = {
-      id: `trans-${Date.now()}`,
-      itemId: selectedItem.id,
-      itemName: selectedItem.name,
-      transactionType,
-      quantity: transactionQuantity,
-      reason: transactionReason,
-      date: new Date().toLocaleDateString('fr-FR'),
-      batchNumber,
-      expiryDate
-    };
-
-    // Mettre à jour la quantité de l'article
-    const updatedItems = inventoryItems.map(item => {
-      if (item.id === selectedItem.id) {
-        const newQuantity = transactionType === 'in' 
-          ? item.currentQuantity + transactionQuantity
-          : item.currentQuantity - transactionQuantity;
+    
+    try {
+      const updatedItem = await InventoryService.updateItem(selectedItem.id, {
+        name: formValues.name,
+        category: formValues.category,
+        current_quantity: formValues.current_quantity,
+        min_quantity: formValues.min_quantity,
+        unit: formValues.unit,
+        expiry_date: formValues.expiry_date,
+        notes: formValues.notes
+      });
+      
+      if (updatedItem) {
+        setItems(items.map(item => (item.id === selectedItem.id ? updatedItem : item)));
+        setIsEditDialogOpen(false);
+        setSelectedItem(null);
+        resetForm();
+      }
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour de l'article:", error);
+    }
+  };
+  
+  const handleDeleteItem = async (itemId: string) => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer cet article ?")) {
+      try {
+        const success = await InventoryService.deleteItem(itemId);
         
-        return {
-          ...item,
-          currentQuantity: newQuantity
-        };
-      }
-      return item;
-    });
-
-    setTransactions([transaction, ...transactions]);
-    setInventoryItems(updatedItems);
-    
-    toast.success(
-      transactionType === 'in' 
-        ? "Entrée en stock enregistrée" 
-        : "Sortie de stock enregistrée"
-    );
-    
-    // Vérifier si la quantité est sous le seuil minimum après une sortie
-    if (transactionType === 'out') {
-      const updatedItem = updatedItems.find(item => item.id === selectedItem.id);
-      if (updatedItem && updatedItem.currentQuantity < updatedItem.minQuantity) {
-        toast.warning(`Attention: ${updatedItem.name} est sous le seuil minimum!`);
+        if (success) {
+          setItems(items.filter(item => item.id !== itemId));
+        }
+      } catch (error) {
+        console.error("Erreur lors de la suppression de l'article:", error);
       }
     }
+  };
+  
+  const handleRecordTransaction = async () => {
+    if (!selectedItem) {
+      toast.error("Aucun article sélectionné");
+      return;
+    }
     
-    setIsTransactionDialogOpen(false);
+    // Vérifier que la quantité est positive
+    if (transactionValues.quantity <= 0) {
+      toast.error("La quantité doit être supérieure à zéro");
+      return;
+    }
+    
+    // Vérifier qu'il y a assez de stock pour les sorties
+    if (
+      (transactionValues.transaction_type === 'stock_out' || transactionValues.transaction_type === 'expired') && 
+      transactionValues.quantity > selectedItem.current_quantity
+    ) {
+      toast.error("Quantité insuffisante en stock");
+      return;
+    }
+    
+    try {
+      const success = await InventoryService.recordTransaction({
+        item_id: selectedItem.id,
+        quantity: transactionValues.quantity,
+        transaction_type: transactionValues.transaction_type as any,
+        reason: transactionValues.reason,
+        batch_number: transactionValues.batch_number,
+        expiry_date: transactionValues.expiry_date,
+        recorded_by: 'current-user-id' // À remplacer par l'ID de l'utilisateur connecté
+      });
+      
+      if (success) {
+        // Mettre à jour les articles après la transaction
+        const updatedItems = await InventoryService.getAllItems();
+        setItems(updatedItems);
+        
+        setIsTransactionDialogOpen(false);
+        resetTransactionForm();
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'enregistrement de la transaction:", error);
+    }
+  };
+  
+  const handleShowHistory = async (item: InventoryItem) => {
+    setSelectedItem(item);
+    
+    try {
+      const transactionHistory = await InventoryService.getItemTransactions(item.id);
+      setTransactions(transactionHistory);
+      setIsHistoryDialogOpen(true);
+    } catch (error) {
+      console.error("Erreur lors de la récupération de l'historique:", error);
+      toast.error("Erreur lors du chargement de l'historique");
+    }
+  };
+  
+  const handleEdit = (item: InventoryItem) => {
+    setSelectedItem(item);
+    setFormValues({
+      name: item.name,
+      category: item.category || '',
+      current_quantity: item.current_quantity,
+      min_quantity: item.min_quantity,
+      unit: item.unit || '',
+      expiry_date: item.expiry_date || '',
+      notes: item.notes || ''
+    });
+    setIsEditDialogOpen(true);
+  };
+  
+  const handleAddTransaction = (item: InventoryItem) => {
+    setSelectedItem(item);
     resetTransactionForm();
+    setIsTransactionDialogOpen(true);
   };
-
-  const resetTransactionForm = () => {
-    setSelectedItem(null);
-    setTransactionType('in');
-    setTransactionQuantity(0);
-    setTransactionReason("");
-    setBatchNumber("");
-    setExpiryDate("");
-  };
-
-  const getLowStockItems = () => {
-    return inventoryItems.filter(item => item.currentQuantity < item.minQuantity);
-  };
-
-  const getExpiringItems = () => {
-    const today = new Date();
-    const threeMonthsFromNow = new Date();
-    threeMonthsFromNow.setMonth(today.getMonth() + 3);
-    
-    return inventoryItems.filter(item => {
-      if (!item.expiryDate) return false;
-      const expiryDate = new Date(item.expiryDate);
-      return expiryDate <= threeMonthsFromNow && expiryDate >= today;
+  
+  const resetForm = () => {
+    setFormValues({
+      name: '',
+      category: '',
+      current_quantity: 0,
+      min_quantity: 0,
+      unit: '',
+      expiry_date: '',
+      notes: ''
     });
   };
-
+  
+  const resetTransactionForm = () => {
+    setTransactionValues({
+      quantity: 1,
+      transaction_type: 'stock_in',
+      reason: '',
+      batch_number: '',
+      expiry_date: ''
+    });
+  };
+  
+  // Obtenir le badge de statut pour un article
+  const getItemStatusBadge = (item: InventoryItem) => {
+    if (item.current_quantity <= 0) {
+      return <Badge variant="destructive">Rupture</Badge>;
+    } else if (item.current_quantity < item.min_quantity) {
+      return <Badge variant="warning">Stock bas</Badge>;
+    }
+    
+    const expiry = item.expiry_date ? new Date(item.expiry_date) : null;
+    const now = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(now.getDate() + 30);
+    
+    if (expiry && expiry < now) {
+      return <Badge variant="destructive">Périmé</Badge>;
+    } else if (expiry && expiry < thirtyDaysFromNow) {
+      return <Badge variant="warning">Exp. proche</Badge>;
+    }
+    
+    return <Badge variant="success">En stock</Badge>;
+  };
+  
+  // Rendu de l'historique des transactions
+  const renderTransactionHistory = () => {
+    return (
+      <div className="max-h-96 overflow-auto">
+        {transactions.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            Aucune transaction enregistrée pour cet article
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Quantité</TableHead>
+                <TableHead>Motif</TableHead>
+                <TableHead>N° lot</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {transactions.map((transaction) => (
+                <TableRow key={transaction.id}>
+                  <TableCell>
+                    {transaction.created_at 
+                      ? format(new Date(transaction.created_at), 'dd/MM/yyyy HH:mm', { locale: fr }) 
+                      : '-'}
+                  </TableCell>
+                  <TableCell>
+                    {transaction.transaction_type === 'stock_in' && 
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Entrée</Badge>}
+                    {transaction.transaction_type === 'stock_out' && 
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Sortie</Badge>}
+                    {transaction.transaction_type === 'adjustment' && 
+                      <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Ajustement</Badge>}
+                    {transaction.transaction_type === 'expired' && 
+                      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Périmé</Badge>}
+                  </TableCell>
+                  <TableCell>
+                    {transaction.transaction_type === 'stock_in' || transaction.transaction_type === 'adjustment'
+                      ? <span className="text-green-600">+{transaction.quantity}</span>
+                      : <span className="text-red-600">-{transaction.quantity}</span>}
+                  </TableCell>
+                  <TableCell>{transaction.reason || '-'}</TableCell>
+                  <TableCell>{transaction.batch_number || '-'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+    );
+  };
+  
   return (
-    <div className="animate-fade-in space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Gestion de l'inventaire</h1>
-          <p className="text-muted-foreground">
-            Gérez votre stock de matériel médical et consommables
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              setTransactionType('out');
-              setIsTransactionDialogOpen(true);
-            }}
-          >
-            Sortie de stock
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={() => {
-              setTransactionType('in');
-              setIsTransactionDialogOpen(true);
-            }}
-          >
-            Entrée en stock
-          </Button>
-          <Button onClick={() => setIsAddItemDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nouvel article
-          </Button>
-        </div>
+    <div className="container mx-auto py-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Gestion de l'inventaire</h1>
+        <p className="text-muted-foreground">Gérez votre stock de matériel médical et produits</p>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-3">
-          <CardHeader className="flex flex-row items-center">
-            <div className="grid gap-2 w-full">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="Rechercher dans l'inventaire..."
-                    className="pl-8"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
+      
+      <Tabs defaultValue="all">
+        <TabsList>
+          <TabsTrigger value="all" className="flex items-center gap-1">
+            <Package className="h-4 w-4" /> Tous les articles
+          </TabsTrigger>
+          <TabsTrigger value="low-stock" className="flex items-center gap-1">
+            <AlertTriangle className="h-4 w-4" /> Stock bas
+          </TabsTrigger>
+          <TabsTrigger value="expiring" className="flex items-center gap-1">
+            <Clock className="h-4 w-4" /> Bientôt périmés
+          </TabsTrigger>
+        </TabsList>
+        
+        <div className="my-4 flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher un article..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Catégorie" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les catégories</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" /> Ajouter
+          </Button>
+        </div>
+        
+        <TabsContent value="all" className="p-0 border-0">
+          <Card>
+            <CardHeader>
+              <CardTitle>Inventaire</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="text-center py-8">Chargement de l'inventaire...</div>
+              ) : filteredItems.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Aucun article trouvé
                 </div>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Catégorie" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes les catégories</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>{category}</SelectItem>
+              ) : (
+                <div className="overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead 
+                          className="cursor-pointer"
+                          onClick={() => handleSort('name')}
+                        >
+                          Nom
+                          {sortField === 'name' && (
+                            sortOrder === 'asc' ? <ArrowUp className="inline ml-1 h-4 w-4" /> : 
+                            <ArrowDown className="inline ml-1 h-4 w-4" />
+                          )}
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer"
+                          onClick={() => handleSort('category')}
+                        >
+                          Catégorie
+                          {sortField === 'category' && (
+                            sortOrder === 'asc' ? <ArrowUp className="inline ml-1 h-4 w-4" /> : 
+                            <ArrowDown className="inline ml-1 h-4 w-4" />
+                          )}
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer"
+                          onClick={() => handleSort('current_quantity')}
+                        >
+                          Stock
+                          {sortField === 'current_quantity' && (
+                            sortOrder === 'asc' ? <ArrowUp className="inline ml-1 h-4 w-4" /> : 
+                            <ArrowDown className="inline ml-1 h-4 w-4" />
+                          )}
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer"
+                          onClick={() => handleSort('expiry_date')}
+                        >
+                          Date exp.
+                          {sortField === 'expiry_date' && (
+                            sortOrder === 'asc' ? <ArrowUp className="inline ml-1 h-4 w-4" /> : 
+                            <ArrowDown className="inline ml-1 h-4 w-4" />
+                          )}
+                        </TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell>
+                            {item.category ? (
+                              <div className="flex items-center">
+                                <Tag className="h-3 w-3 mr-1 text-muted-foreground" />
+                                {item.category}
+                              </div>
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {item.current_quantity} {item.unit || ''}
+                              {item.current_quantity < item.min_quantity && (
+                                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {item.expiry_date && (
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3 text-muted-foreground" />
+                                {formatExpiryDate(item.expiry_date)}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>{getItemStatusBadge(item)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="icon"
+                                onClick={() => handleEdit(item)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="icon"
+                                onClick={() => handleAddTransaction(item)}
+                              >
+                                <ArrowUpDown className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="icon"
+                                onClick={() => handleShowHistory(item)}
+                              >
+                                <History className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="destructive" 
+                                size="icon"
+                                onClick={() => handleDeleteItem(item.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="low-stock" className="p-0 border-0">
+          <Card>
+            <CardHeader>
+              <CardTitle>Articles à faible stock</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="text-center py-8">Chargement...</div>
+              ) : lowStockItems.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Aucun article à faible stock
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nom</TableHead>
+                      <TableHead>Stock actuel</TableHead>
+                      <TableHead>Stock minimal</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lowStockItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell className="text-red-600">
+                          {item.current_quantity} {item.unit || ''}
+                        </TableCell>
+                        <TableCell>
+                          {item.min_quantity} {item.unit || ''}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleAddTransaction(item)}
+                          >
+                            <ArrowUp className="h-4 w-4 mr-1" />
+                            Approvisionner
+                          </Button>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="inventory">
-              <TabsList className="mb-4">
-                <TabsTrigger value="inventory">Inventaire</TabsTrigger>
-                <TabsTrigger value="alerts">
-                  Alertes
-                  {getLowStockItems().length > 0 && (
-                    <span className="ml-2 bg-red-500 text-white text-xs font-semibold rounded-full w-5 h-5 inline-flex items-center justify-center">
-                      {getLowStockItems().length}
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="transactions">Historique</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="inventory">
-                {isLoading ? (
-                  <div className="text-center py-8">Chargement de l'inventaire...</div>
-                ) : filteredItems.length > 0 ? (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Nom</TableHead>
-                          <TableHead>Catégorie</TableHead>
-                          <TableHead className="text-right">Quantité</TableHead>
-                          <TableHead className="text-right">Seuil Min.</TableHead>
-                          <TableHead>Unité</TableHead>
-                          <TableHead>Date d'expiration</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredItems.map((item) => (
-                          <TableRow key={item.id} className={item.currentQuantity < item.minQuantity ? "bg-red-50" : ""}>
-                            <TableCell className="font-medium">{item.name}</TableCell>
-                            <TableCell>{item.category}</TableCell>
-                            <TableCell className="text-right font-semibold">
-                              <span className={item.currentQuantity < item.minQuantity ? "text-red-600" : ""}>
-                                {item.currentQuantity}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">{item.minQuantity}</TableCell>
-                            <TableCell>{item.unit}</TableCell>
-                            <TableCell>
-                              {item.expiryDate 
-                                ? new Date(item.expiryDate).toLocaleDateString('fr-FR') 
-                                : "-"}
-                            </TableCell>
-                            <TableCell className="text-right space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedItem(item);
-                                  setTransactionType('out');
-                                  setIsTransactionDialogOpen(true);
-                                }}
-                              >
-                                Sortie
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedItem(item);
-                                  setTransactionType('in');
-                                  setIsTransactionDialogOpen(true);
-                                }}
-                              >
-                                Entrée
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Aucun article trouvé
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="alerts">
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3 flex items-center">
-                      <AlertTriangle className="mr-2 h-5 w-5 text-red-500" />
-                      Stock bas
-                    </h3>
-                    {getLowStockItems().length > 0 ? (
-                      <div className="rounded-md border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Nom</TableHead>
-                              <TableHead>Catégorie</TableHead>
-                              <TableHead className="text-right">Quantité actuelle</TableHead>
-                              <TableHead className="text-right">Seuil minimum</TableHead>
-                              <TableHead>Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {getLowStockItems().map((item) => (
-                              <TableRow key={item.id} className="bg-red-50">
-                                <TableCell className="font-medium">{item.name}</TableCell>
-                                <TableCell>{item.category}</TableCell>
-                                <TableCell className="text-right font-semibold text-red-600">
-                                  {item.currentQuantity}
-                                </TableCell>
-                                <TableCell className="text-right">{item.minQuantity}</TableCell>
-                                <TableCell>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedItem(item);
-                                      setTransactionType('in');
-                                      setIsTransactionDialogOpen(true);
-                                    }}
-                                  >
-                                    Réapprovisionner
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 text-muted-foreground border rounded-md">
-                        Aucun article sous le seuil minimum
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3 flex items-center">
-                      <Clock className="mr-2 h-5 w-5 text-amber-500" />
-                      Expiration proche
-                    </h3>
-                    {getExpiringItems().length > 0 ? (
-                      <div className="rounded-md border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Nom</TableHead>
-                              <TableHead>Catégorie</TableHead>
-                              <TableHead className="text-right">Quantité</TableHead>
-                              <TableHead>Date d'expiration</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {getExpiringItems().map((item) => (
-                              <TableRow key={item.id} className="bg-amber-50">
-                                <TableCell className="font-medium">{item.name}</TableCell>
-                                <TableCell>{item.category}</TableCell>
-                                <TableCell className="text-right">{item.currentQuantity}</TableCell>
-                                <TableCell>
-                                  {item.expiryDate && new Date(item.expiryDate).toLocaleDateString('fr-FR')}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 text-muted-foreground border rounded-md">
-                        Aucun article proche de la date d'expiration
-                      </div>
-                    )}
-                  </div>
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="expiring" className="p-0 border-0">
+          <Card>
+            <CardHeader>
+              <CardTitle>Articles bientôt périmés</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="text-center py-8">Chargement...</div>
+              ) : expiringItems.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Aucun article bientôt périmé
                 </div>
-              </TabsContent>
-              
-              <TabsContent value="transactions">
-                {transactions.length > 0 ? (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Article</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead className="text-right">Quantité</TableHead>
-                          <TableHead>Motif</TableHead>
-                          <TableHead>N° lot</TableHead>
-                          <TableHead>Date d'expiration</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {transactions.map((transaction) => (
-                          <TableRow key={transaction.id}>
-                            <TableCell>{transaction.date}</TableCell>
-                            <TableCell className="font-medium">{transaction.itemName}</TableCell>
-                            <TableCell>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                transaction.transactionType === 'in' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
-                                {transaction.transactionType === 'in' ? 'Entrée' : 'Sortie'}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">{transaction.quantity}</TableCell>
-                            <TableCell>{transaction.reason || "-"}</TableCell>
-                            <TableCell>{transaction.batchNumber || "-"}</TableCell>
-                            <TableCell>{transaction.expiryDate || "-"}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Aucune transaction enregistrée
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Dialog - Ajouter un article */}
-      <Dialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nom</TableHead>
+                      <TableHead>Stock</TableHead>
+                      <TableHead>Date d'expiration</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {expiringItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell>
+                          {item.current_quantity} {item.unit || ''}
+                        </TableCell>
+                        <TableCell className="text-amber-600">
+                          {formatExpiryDate(item.expiry_date)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleAddTransaction(item)}
+                            >
+                              Gérer
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      
+      {/* Dialogue pour ajouter un article */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Ajouter un article</DialogTitle>
-            <DialogDescription>
-              Ajoutez un nouvel article à votre inventaire
-            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nom de l'article *</Label>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="name" className="text-right">
+                Nom*
+              </label>
               <Input
                 id="name"
-                placeholder="ex: Compresses stériles 10x10cm"
-                value={newItem.name}
-                onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                name="name"
+                value={formValues.name}
+                onChange={handleInputChange}
+                className="col-span-3"
+                required
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="category">Catégorie *</Label>
-              <Select 
-                value={newItem.category} 
-                onValueChange={(value) => setNewItem({...newItem, category: value})}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="category" className="text-right">
+                Catégorie
+              </label>
+              <Select
+                value={formValues.category}
+                onValueChange={(value) => handleSelectChange('category', value)}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir une catégorie" />
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Sélectionner une catégorie" />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((category) => (
@@ -628,191 +798,358 @@ export default function Inventory() {
                       {category}
                     </SelectItem>
                   ))}
+                  <SelectItem value="new">+ Nouvelle catégorie</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentQuantity">Quantité initiale</Label>
+            {formValues.category === 'new' && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="newCategory" className="text-right">
+                  Nouvelle catégorie
+                </label>
                 <Input
-                  id="currentQuantity"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={newItem.currentQuantity}
-                  onChange={(e) => setNewItem({...newItem, currentQuantity: e.target.value})}
+                  id="newCategory"
+                  name="newCategory"
+                  value={formValues.newCategory || ''}
+                  onChange={handleInputChange}
+                  className="col-span-3"
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="unit">Unité</Label>
-                <Select 
-                  value={newItem.unit} 
-                  onValueChange={(value) => setNewItem({...newItem, unit: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choisir une unité" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {units.map((unit) => (
-                      <SelectItem key={unit} value={unit}>
-                        {unit}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            )}
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="current_quantity" className="text-right">
+                Quantité initiale
+              </label>
+              <Input
+                id="current_quantity"
+                name="current_quantity"
+                type="number"
+                value={formValues.current_quantity}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="minQuantity">Seuil minimum</Label>
-                <Input
-                  id="minQuantity"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={newItem.minQuantity}
-                  onChange={(e) => setNewItem({...newItem, minQuantity: e.target.value})}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Alerte quand la quantité passe sous ce seuil
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="expiryDate">Date d'expiration</Label>
-                <Input
-                  id="expiryDate"
-                  type="date"
-                  value={newItem.expiryDate}
-                  onChange={(e) => setNewItem({...newItem, expiryDate: e.target.value})}
-                />
-              </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="min_quantity" className="text-right">
+                Quantité minimale
+              </label>
+              <Input
+                id="min_quantity"
+                name="min_quantity"
+                type="number"
+                value={formValues.min_quantity}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes (optionnel)</Label>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="unit" className="text-right">
+                Unité
+              </label>
+              <Input
+                id="unit"
+                name="unit"
+                value={formValues.unit || ''}
+                onChange={handleInputChange}
+                className="col-span-3"
+                placeholder="Ex: unités, boîtes, ml, etc."
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="expiry_date" className="text-right">
+                Date d'expiration
+              </label>
+              <Input
+                id="expiry_date"
+                name="expiry_date"
+                type="date"
+                value={formValues.expiry_date || ''}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="notes" className="text-right">
+                Notes
+              </label>
               <Input
                 id="notes"
-                placeholder="Informations complémentaires..."
-                value={newItem.notes}
-                onChange={(e) => setNewItem({...newItem, notes: e.target.value})}
+                name="notes"
+                value={formValues.notes || ''}
+                onChange={handleInputChange}
+                className="col-span-3"
               />
             </div>
           </div>
+          
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddItemDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
               Annuler
             </Button>
-            <Button type="submit" onClick={handleAddItem}>
-              Ajouter à l'inventaire
-            </Button>
+            <Button onClick={handleAddItem}>Ajouter</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Dialog - Transaction (entrée/sortie) */}
+      
+      {/* Dialogue pour éditer un article */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier un article</DialogTitle>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="edit-name" className="text-right">
+                Nom*
+              </label>
+              <Input
+                id="edit-name"
+                name="name"
+                value={formValues.name}
+                onChange={handleInputChange}
+                className="col-span-3"
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="edit-category" className="text-right">
+                Catégorie
+              </label>
+              <Select
+                value={formValues.category}
+                onValueChange={(value) => handleSelectChange('category', value)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Sélectionner une catégorie" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="new">+ Nouvelle catégorie</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="edit-min_quantity" className="text-right">
+                Quantité minimale
+              </label>
+              <Input
+                id="edit-min_quantity"
+                name="min_quantity"
+                type="number"
+                value={formValues.min_quantity}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="edit-unit" className="text-right">
+                Unité
+              </label>
+              <Input
+                id="edit-unit"
+                name="unit"
+                value={formValues.unit || ''}
+                onChange={handleInputChange}
+                className="col-span-3"
+                placeholder="Ex: unités, boîtes, ml, etc."
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="edit-expiry_date" className="text-right">
+                Date d'expiration
+              </label>
+              <Input
+                id="edit-expiry_date"
+                name="expiry_date"
+                type="date"
+                value={formValues.expiry_date || ''}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="edit-notes" className="text-right">
+                Notes
+              </label>
+              <Input
+                id="edit-notes"
+                name="notes"
+                value={formValues.notes || ''}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleEditItem}>Enregistrer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialogue pour ajouter une transaction */}
       <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {transactionType === 'in' ? "Entrée en stock" : "Sortie de stock"}
+              {selectedItem ? (
+                <>Transaction pour {selectedItem.name}</>
+              ) : (
+                <>Nouvelle transaction</>
+              )}
             </DialogTitle>
-            <DialogDescription>
-              {transactionType === 'in' 
-                ? "Enregistrer l'arrivée de produits dans votre inventaire"
-                : "Enregistrer l'utilisation ou la sortie de produits"}
-            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="item">Article *</Label>
-              <Select 
-                value={selectedItem?.id} 
-                onValueChange={(value) => {
-                  const item = inventoryItems.find(item => item.id === value);
-                  if (item) setSelectedItem(item);
-                }}
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="transaction_type" className="text-right">
+                Type*
+              </label>
+              <Select
+                value={transactionValues.transaction_type}
+                onValueChange={handleTransactionTypeChange}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un article" />
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Sélectionner le type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {inventoryItems.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {item.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="stock_in">Entrée en stock</SelectItem>
+                  <SelectItem value="stock_out">Sortie de stock</SelectItem>
+                  <SelectItem value="adjustment">Ajustement</SelectItem>
+                  <SelectItem value="expired">Périmé</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="quantity">Quantité *</Label>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="quantity" className="text-right">
+                Quantité*
+              </label>
               <Input
                 id="quantity"
+                name="quantity"
                 type="number"
-                min="1"
-                step="1"
-                value={transactionQuantity || ''}
-                onChange={(e) => setTransactionQuantity(parseFloat(e.target.value))}
+                min="0.01"
+                step="0.01"
+                value={transactionValues.quantity}
+                onChange={handleTransactionInputChange}
+                className="col-span-3"
+                required
               />
-              {selectedItem && transactionType === 'out' && (
-                <p className="text-xs text-muted-foreground">
-                  Quantité disponible: {selectedItem.currentQuantity} {selectedItem.unit}
-                </p>
-              )}
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="reason">Motif (optionnel)</Label>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="reason" className="text-right">
+                Motif
+              </label>
               <Input
                 id="reason"
-                placeholder={transactionType === 'in' ? "ex: Livraison fournisseur" : "ex: Soins patient"}
-                value={transactionReason}
-                onChange={(e) => setTransactionReason(e.target.value)}
+                name="reason"
+                value={transactionValues.reason}
+                onChange={handleTransactionInputChange}
+                className="col-span-3"
+                placeholder="Ex: Réapprovisionnement, Utilisation patient, etc."
               />
             </div>
             
-            {transactionType === 'in' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="batchNumber">Numéro de lot</Label>
+            {(transactionValues.transaction_type === 'stock_in') && (
+              <>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <label htmlFor="batch_number" className="text-right">
+                    N° de lot
+                  </label>
                   <Input
-                    id="batchNumber"
-                    placeholder="ex: LOT2025-123"
-                    value={batchNumber}
-                    onChange={(e) => setBatchNumber(e.target.value)}
+                    id="batch_number"
+                    name="batch_number"
+                    value={transactionValues.batch_number}
+                    onChange={handleTransactionInputChange}
+                    className="col-span-3"
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="expiryDateTrans">Date d'expiration</Label>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <label htmlFor="transaction_expiry_date" className="text-right">
+                    Date d'expiration
+                  </label>
                   <Input
-                    id="expiryDateTrans"
+                    id="transaction_expiry_date"
+                    name="expiry_date"
                     type="date"
-                    value={expiryDate}
-                    onChange={(e) => setExpiryDate(e.target.value)}
+                    value={transactionValues.expiry_date}
+                    onChange={handleTransactionInputChange}
+                    className="col-span-3"
                   />
                 </div>
+              </>
+            )}
+            
+            {selectedItem && (
+              <div className="mt-4 p-3 bg-accent rounded-md">
+                <p className="text-sm text-muted-foreground mb-1">Stock actuel :</p>
+                <p className="font-medium">{selectedItem.current_quantity} {selectedItem.unit || ''}</p>
+                
+                <p className="text-sm text-muted-foreground mt-3 mb-1">Stock après transaction :</p>
+                <p className="font-medium">
+                  {transactionValues.transaction_type === 'stock_in' || transactionValues.transaction_type === 'adjustment'
+                    ? selectedItem.current_quantity + transactionValues.quantity
+                    : selectedItem.current_quantity - transactionValues.quantity} {selectedItem.unit || ''}
+                </p>
               </div>
             )}
           </div>
+          
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsTransactionDialogOpen(false)}>
               Annuler
             </Button>
-            <Button 
-              onClick={handleAddTransaction}
-              disabled={!selectedItem || !transactionQuantity || transactionQuantity <= 0}
-            >
-              {transactionType === 'in' ? "Enregistrer l'entrée" : "Enregistrer la sortie"}
+            <Button onClick={handleRecordTransaction}>Enregistrer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialogue pour l'historique des transactions */}
+      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedItem ? (
+                <>Historique des transactions - {selectedItem.name}</>
+              ) : (
+                <>Historique des transactions</>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {renderTransactionHistory()}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsHistoryDialogOpen(false)}>
+              Fermer
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
-}
+};
+
+export default Inventory;

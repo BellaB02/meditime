@@ -1,8 +1,17 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { PatientMessage } from '@/integrations/supabase/services/types';
 import { useProfile } from "@/hooks/useProfile";
+
+export interface PatientMessage {
+  id: string;
+  patient_id: string;
+  sender_id?: string;
+  content: string;
+  is_from_patient: boolean;
+  read_at?: string | null;
+  created_at: string;
+}
 
 export const MessagingService = {
   /**

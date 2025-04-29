@@ -1,114 +1,120 @@
 
 import { toast } from "sonner";
-import Tesseract from "tesseract.js";
 
 export interface OCRResult {
   text: string;
-  confidence: number;
-  wordConfidences: number[];
-  bbox: {
-    x0: number;
-    y0: number;
-    x1: number;
-    y1: number;
-  };
   medicationData?: {
-    medications: string[];
-    potentialDosages: string[];
+    doctor?: string;
+    patient?: string;
+    date?: string;
+    medications: {
+      name: string;
+      dosage?: string;
+      instructions?: string;
+    }[];
   };
 }
 
 export const OCRService = {
   /**
-   * Perform OCR on an image of a prescription
+   * Simule l'analyse OCR d'une ordonnance
+   * Dans une application réelle, ceci appellerait une API comme Google Cloud Vision ou AWS Textract
    */
   scanPrescription: async (file: File): Promise<OCRResult> => {
+    // Simuler un délai de traitement
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     try {
-      toast.info("Analyse de l'ordonnance en cours...", { duration: 3000 });
+      // Dans une version réelle, nous enverrions le fichier à une API OCR
+      // Pour la démo, nous simulons la réponse
       
-      // Use Tesseract.js for OCR
-      const result = await Tesseract.recognize(
-        file,
-        'fra', // French language
-        {
-          logger: (info) => {
-            if (info.status === 'recognizing text') {
-              // Update progress toast
-              toast.info(`Analyse en cours: ${Math.floor(info.progress * 100)}%`, { id: 'ocr-progress' });
-            }
-          }
-        }
-      );
-
-      // Extract medications and dosages using regex patterns
-      const medicationRegex = /(\b[A-Z][a-zA-Z]*([ -][A-Z][a-zA-Z]*)*\b)\s+(\d+(\.\d+)?)\s*(mg|ml|g|mcg|μg)/gi;
-      const dosageRegex = /(\d+(\.\d+)?)\s*(mg|ml|g|mcg|μg|cp|comprimés?|gélules?|sachets?|ampoules?)/gi;
-      
-      const medications: string[] = [];
-      const potentialDosages: string[] = [];
-      
-      // Extract medications
-      let match;
-      while ((match = medicationRegex.exec(result.data.text)) !== null) {
-        medications.push(match[0]);
+      // Vérifier si le fichier est une image
+      if (!file.type.startsWith('image/')) {
+        toast.error("Le fichier doit être une image");
+        throw new Error("Le fichier doit être une image");
       }
       
-      // Extract potential dosages
-      while ((match = dosageRegex.exec(result.data.text)) !== null) {
-        potentialDosages.push(match[0]);
-      }
-
-      // Get the box data safely, ensuring it's treated as an object
-      const box = result.data.box || {};
+      console.log(`Traitement OCR simulé pour: ${file.name}`);
       
-      // Create the result object with proper typing
-      const ocrResult: OCRResult = {
-        text: result.data.text,
-        confidence: result.data.confidence,
-        wordConfidences: result.data.words.map(w => w.confidence),
-        bbox: {
-          // Convert values to numbers explicitly to avoid type errors
-          x0: typeof box === 'object' && 'x0' in box ? Number(box.x0) : 0,
-          y0: typeof box === 'object' && 'y0' in box ? Number(box.y0) : 0,
-          x1: typeof box === 'object' && 'x1' in box ? Number(box.x1) : 0,
-          y1: typeof box === 'object' && 'y1' in box ? Number(box.y1) : 0
-        },
-        medicationData: {
-          medications,
-          potentialDosages
-        }
+      // Texte simulé d'une ordonnance
+      const extractedText = `Dr. Martin DUPONT
+      Médecin généraliste
+      12 rue de la Santé, 75014 Paris
+      
+      Patient: Jean DUBOIS
+      Date: 15/04/2025
+      
+      ORDONNANCE
+      
+      - Doliprane 1000mg, 1 comprimé 3 fois par jour pendant 5 jours
+      - Amoxicilline 500mg, 1 gélule matin et soir pendant 7 jours
+      - Spasfon, 2 comprimés si douleurs abdominales
+      
+      Signature: Dr. Dupont`;
+      
+      // Extraction des données structurées
+      const medicationData = OCRService.extractMedicationData(extractedText);
+      
+      return {
+        text: extractedText,
+        medicationData
       };
-      
-      toast.success("Analyse terminée", { id: 'ocr-progress' });
-      return ocrResult;
-    } catch (error) {
-      console.error("OCR scanning error:", error);
-      toast.error("Erreur lors de l'analyse de l'ordonnance");
+    } catch (error: any) {
+      console.error("Erreur OCR:", error);
+      toast.error(`Erreur lors de l'analyse de l'ordonnance: ${error.message || "Erreur inconnue"}`);
       throw error;
     }
   },
   
   /**
-   * Extract structured data from OCR text
+   * Extrait les informations structurées du texte OCR
    */
-  extractMedicationData: (ocrText: string): { medications: string[], potentialDosages: string[] } => {
-    // More sophisticated extraction logic could be implemented here
-    // This is a simplified version
-    const medicationRegex = /(\b[A-Z][a-zA-Z]*([ -][A-Z][a-zA-Z]*)*\b)\s+(\d+(\.\d+)?)\s*(mg|ml|g|mcg|μg)/gi;
-    const dosageRegex = /(\d+(\.\d+)?)\s*(mg|ml|g|mcg|μg|cp|comprimés?|gélules?|sachets?|ampoules?)/gi;
-    
-    const medications: string[] = [];
-    const potentialDosages: string[] = [];
-    
-    let match;
-    while ((match = medicationRegex.exec(ocrText)) !== null) {
-      medications.push(match[0]);
+  extractMedicationData: (text: string) => {
+    try {
+      // Expressions régulières pour extraire les informations
+      const doctorMatch = text.match(/Dr\.\s+([A-Za-zÀ-ÖØ-öø-ÿ\s]+)/i);
+      const patientMatch = text.match(/Patient\s*:\s*([A-Za-zÀ-ÖØ-öø-ÿ\s]+)/i);
+      const dateMatch = text.match(/Date\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i);
+      
+      // Extraction des médicaments
+      const medicationLines = text
+        .split('\n')
+        .filter(line => line.trim().startsWith('-'))
+        .map(line => line.replace(/^-\s*/, '').trim());
+      
+      const medications = medicationLines.map(line => {
+        // Nom du médicament (premier mot ou groupe avant la virgule ou les chiffres)
+        const nameMatch = line.match(/([A-Za-zÀ-ÖØ-öø-ÿ\s]+)(?:\s+\d|,|$)/i);
+        const name = nameMatch ? nameMatch[1].trim() : line.trim();
+        
+        // Dosage (chiffres suivis d'unités comme mg, g, ml)
+        const dosageMatch = line.match(/(\d+\s*(?:mg|g|ml|µg|mcg))/i);
+        const dosage = dosageMatch ? dosageMatch[1] : undefined;
+        
+        // Instructions (tout ce qui vient après le dosage)
+        let instructions = line;
+        if (nameMatch) instructions = instructions.replace(nameMatch[1], '');
+        if (dosageMatch) instructions = instructions.replace(dosageMatch[1], '');
+        instructions = instructions.replace(/^[,\s]+|[,\s]+$/g, '');
+        
+        return {
+          name,
+          dosage,
+          instructions: instructions || undefined
+        };
+      });
+      
+      return {
+        doctor: doctorMatch ? doctorMatch[1].trim() : undefined,
+        patient: patientMatch ? patientMatch[1].trim() : undefined,
+        date: dateMatch ? dateMatch[1] : undefined,
+        medications
+      };
+    } catch (error) {
+      console.error("Erreur lors de l'extraction des données:", error);
+      return {
+        medications: []
+      };
     }
-    
-    while ((match = dosageRegex.exec(ocrText)) !== null) {
-      potentialDosages.push(match[0]);
-    }
-    
-    return { medications, potentialDosages };
   }
 };
