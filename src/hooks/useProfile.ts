@@ -30,7 +30,8 @@ export function useProfile() {
       try {
         setLoading(true);
         
-        const { data, error } = await fetch('/api/profiles');
+        // Remove the problematic fetch call that was causing the TypeScript error
+        // and just use the profilesService directly
         
         const { profilesService } = await import('@/integrations/supabase/services');
         const profileData = await profilesService.getProfile(user.id);
