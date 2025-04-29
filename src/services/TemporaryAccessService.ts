@@ -1,5 +1,6 @@
 
 import { toast } from "sonner";
+import { EmailService } from "./EmailService";
 
 interface TemporaryAccess {
   id: string;
@@ -42,6 +43,14 @@ export const TemporaryAccessService = {
     
     // Créer le lien complet (dans une vraie application, ce serait l'URL du site)
     const link = `${window.location.origin}/auth?token=${token}`;
+    
+    // Envoyer un email d'invitation (dans une vraie application)
+    EmailService.sendInvitationEmail(email, name, link)
+      .then(success => {
+        if (success) {
+          console.log(`Email d'invitation envoyé à ${email}`);
+        }
+      });
     
     return { id, token, link };
   },
@@ -89,6 +98,36 @@ export const TemporaryAccessService = {
     
     // Marquer comme utilisé (révoqué)
     temporaryAccessLinks[index].used = true;
+    return true;
+  },
+  
+  /**
+   * Renvoie une invitation par email
+   */
+  resendInvitation: (id: string): boolean => {
+    const access = temporaryAccessLinks.find(a => a.id === id && !a.used);
+    
+    if (!access) {
+      return false;
+    }
+    
+    // Vérifier si le token n'est pas expiré
+    if (new Date() > access.expires) {
+      return false;
+    }
+    
+    // Créer le lien complet
+    const link = `${window.location.origin}/auth?token=${access.token}`;
+    
+    // Envoyer un nouvel email d'invitation
+    EmailService.sendInvitationEmail(access.email, access.name, link)
+      .then(success => {
+        if (success) {
+          console.log(`Email d'invitation renvoyé à ${access.email}`);
+          toast.success(`Email renvoyé à ${access.email}`);
+        }
+      });
+    
     return true;
   }
 };

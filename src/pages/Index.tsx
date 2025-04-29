@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import StatsCards from "@/components/Dashboard/StatsCards";
 import { DailyCareProgress } from "@/components/Dashboard/DailyCareProgress";
-import { Welcome } from "@/components/Dashboard/Welcome";
+import { UserWelcome } from "@/components/Dashboard/UserWelcome";
 import AppointmentList from "@/components/Dashboard/AppointmentList";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
@@ -91,7 +91,7 @@ export default function Index() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <Welcome />
+      <UserWelcome />
       
       <StatsCards />
       

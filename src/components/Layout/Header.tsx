@@ -9,6 +9,8 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { useContext } from "react";
 import { AuthContext } from "../../App";
+import { usePractice } from "@/hooks/usePractice";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export function Header() {
   const { toggleSidebar } = useSidebar();
@@ -17,6 +19,8 @@ export function Header() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { logout } = useContext(AuthContext);
+  const { currentMember } = usePractice();
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     // Simuler la réception de notifications
@@ -47,20 +51,31 @@ export function Header() {
       description: "Vous avez été déconnecté avec succès",
     });
   };
+
+  // Obtenir les initiales du nom de l'utilisateur
+  const getUserInitials = () => {
+    if (!currentMember) return "?";
+    
+    const nameParts = currentMember.name.split(' ');
+    if (nameParts.length >= 2) {
+      return `${nameParts[0].charAt(0)}${nameParts[1].charAt(0)}`.toUpperCase();
+    }
+    return nameParts[0].charAt(0).toUpperCase();
+  };
   
   return (
     <header className="h-16 px-4 border-b flex items-center justify-between bg-background">
       <div className="flex items-center gap-2 lg:gap-4 w-full">
         <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden">
           <Menu className="h-6 w-6" />
-          <span className="sr-only">Toggle Menu</span>
+          <span className="sr-only">Menu</span>
         </Button>
         <div className="hidden lg:flex">
           <h1 className="text-xl font-semibold">Meditime</h1>
         </div>
       </div>
       
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 md:gap-4">
         <div className="relative">
           <Button variant="ghost" size="icon" onClick={handleNotificationClick}>
             <Bell className="h-5 w-5" />
@@ -73,14 +88,20 @@ export function Header() {
           </Button>
         </div>
         
-        <Button variant="ghost" size="icon" onClick={handleLogout}>
+        {!isMobile && currentMember && (
+          <span className="text-sm text-muted-foreground hidden md:inline-block">
+            {currentMember.name}
+          </span>
+        )}
+        
+        <Button variant="ghost" size="icon" onClick={handleLogout} className="md:mr-2">
           <LogOut className="h-5 w-5" />
           <span className="sr-only">Se déconnecter</span>
         </Button>
         
         <Avatar>
-          <AvatarImage src="" />
-          <AvatarFallback>MS</AvatarFallback>
+          <AvatarImage src={currentMember?.avatar || ""} />
+          <AvatarFallback>{getUserInitials()}</AvatarFallback>
         </Avatar>
       </div>
     </header>

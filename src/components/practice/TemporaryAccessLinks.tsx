@@ -1,110 +1,99 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Clock, Copy, Link, X } from "lucide-react";
-import { toast } from "sonner";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TemporaryAccessService } from "@/services/TemporaryAccessService";
+import { RefreshCw, Send, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const TemporaryAccessLinks = () => {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [role, setRole] = useState("nurse");
-  const [duration, setDuration] = useState("24");
-  const [activeLinks, setActiveLinks] = useState(TemporaryAccessService.getActiveAccessLinks());
-  const [generatedLink, setGeneratedLink] = useState("");
+  const [links, setLinks] = useState(() => TemporaryAccessService.getActiveAccessLinks());
+  const isMobile = useIsMobile();
   
-  const handleGenerateLink = () => {
-    if (!email || !name || !role || !duration) {
-      toast.error("Veuillez remplir tous les champs");
-      return;
-    }
-    
-    const { link } = TemporaryAccessService.generateTemporaryAccess(
-      email,
-      role,
-      name,
-      parseInt(duration)
-    );
-    
-    setGeneratedLink(link);
-    
-    // Refresh active links list
-    setActiveLinks(TemporaryAccessService.getActiveAccessLinks());
+  const handleRefresh = () => {
+    setLinks(TemporaryAccessService.getActiveAccessLinks());
   };
   
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(generatedLink);
-    toast.success("Lien copié dans le presse-papiers");
-  };
-  
-  const handleRevokeLink = (id: string) => {
-    TemporaryAccessService.revokeAccess(id);
-    setActiveLinks(TemporaryAccessService.getActiveAccessLinks());
-    toast.success("Lien d'accès révoqué");
-  };
-  
-  const formatExpiryDate = (date: Date) => {
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
-  };
-  
-  const getTimeLeft = (expiryDate: Date) => {
+  const getRemainingTime = (expiryDate: Date): string => {
     const now = new Date();
-    const diff = expiryDate.getTime() - now.getTime();
+    const diffMs = expiryDate.getTime() - now.getTime();
+    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
     
-    // Convertir en heures et minutes
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (hours > 0) {
-      return `${hours}h ${minutes}min`;
+    if (diffHrs < 1) {
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      return `${diffMins} minute${diffMins > 1 ? 's' : ''}`;
     }
     
-    return `${minutes}min`;
+    return `${diffHrs} heure${diffHrs > 1 ? 's' : ''}`;
   };
   
+  const handleRevoke = (id: string) => {
+    if (TemporaryAccessService.revokeAccess(id)) {
+      setLinks(links.filter(link => link.id !== id));
+      toast.success("Invitation révoquée");
+    }
+  };
+  
+  const handleResend = (id: string) => {
+    if (TemporaryAccessService.resendInvitation(id)) {
+      toast.success("Invitation renvoyée");
+    }
+  };
+
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Liens d'accès temporaires</CardTitle>
-        <Button onClick={() => setIsDialogOpen(true)}>Générer un lien</Button>
+      <CardHeader className="flex flex-row items-start justify-between">
+        <div>
+          <CardTitle>Liens d'accès temporaires</CardTitle>
+          <CardDescription>Gérez les invitations en attente</CardDescription>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleRefresh}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Actualiser
+        </Button>
       </CardHeader>
       <CardContent>
-        {activeLinks.length === 0 ? (
-          <div className="text-center py-6 text-muted-foreground">
-            Aucun lien d'accès temporaire actif
+        {links.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-muted-foreground">Aucune invitation en attente</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {activeLinks.map((link) => (
-              <div key={link.id} className="flex items-center justify-between p-3 border rounded-md">
-                <div>
-                  <div className="font-medium">{link.name}</div>
-                  <div className="text-sm text-muted-foreground">{link.email}</div>
-                  <div className="text-xs flex items-center gap-1 mt-1">
-                    <Clock className="h-3 w-3" />
-                    Expire dans {getTimeLeft(link.expires)} ({formatExpiryDate(link.expires)})
+            {links.map(link => (
+              <div 
+                key={link.id} 
+                className="border rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{link.name}</span>
+                    <Badge variant="outline">{link.role === 'admin' ? 'Administrateur' : link.role === 'nurse' ? 'Infirmier' : 'Secrétaire'}</Badge>
                   </div>
+                  <p className="text-sm text-muted-foreground">{link.email}</p>
+                  <p className="text-xs">
+                    Expire dans <span className="font-medium">{getRemainingTime(link.expires)}</span>
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className={`flex gap-2 ${isMobile ? 'w-full' : ''}`}>
                   <Button 
                     variant="outline" 
-                    size="sm"
-                    onClick={() => handleRevokeLink(link.id)}
+                    size="sm" 
+                    className={isMobile ? "flex-1" : ""} 
+                    onClick={() => handleResend(link.id)}
                   >
-                    <X className="h-4 w-4 mr-1" />
-                    Révoquer
+                    <Send className="h-3.5 w-3.5 mr-1" />
+                    {isMobile ? "" : "Renvoyer"}
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className={isMobile ? "flex-1" : ""} 
+                    onClick={() => handleRevoke(link.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    {isMobile ? "" : "Révoquer"}
                   </Button>
                 </div>
               </div>
@@ -112,100 +101,6 @@ export const TemporaryAccessLinks = () => {
           </div>
         )}
       </CardContent>
-      
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Générer un lien d'accès temporaire</DialogTitle>
-            <DialogDescription>
-              Créez un lien d'accès temporaire pour permettre à un remplaçant d'accéder au cabinet.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <Label htmlFor="name">Nom du remplaçant</Label>
-                <Input
-                  id="name"
-                  placeholder="Ex: Jean Dupont"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Ex: jean.dupont@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="role">Rôle</Label>
-                  <Select value={role} onValueChange={setRole}>
-                    <SelectTrigger id="role">
-                      <SelectValue placeholder="Sélectionnez un rôle" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Administrateur</SelectItem>
-                      <SelectItem value="nurse">Infirmier</SelectItem>
-                      <SelectItem value="secretary">Secrétaire</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="duration">Durée (heures)</Label>
-                  <Select value={duration} onValueChange={setDuration}>
-                    <SelectTrigger id="duration">
-                      <SelectValue placeholder="Sélectionnez une durée" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="4">4 heures</SelectItem>
-                      <SelectItem value="8">8 heures</SelectItem>
-                      <SelectItem value="24">24 heures</SelectItem>
-                      <SelectItem value="48">48 heures</SelectItem>
-                      <SelectItem value="72">72 heures</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-            
-            {generatedLink && (
-              <div className="p-3 bg-primary/10 rounded-md">
-                <div className="flex items-center justify-between">
-                  <Label>Lien généré</Label>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={handleCopyLink}
-                  >
-                    <Copy className="h-4 w-4 mr-1" />
-                    Copier
-                  </Button>
-                </div>
-                <div className="mt-2 p-2 bg-background rounded border break-all text-xs">
-                  {generatedLink}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handleGenerateLink}>
-              <Link className="h-4 w-4 mr-2" />
-              Générer le lien
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 };

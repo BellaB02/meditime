@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { TemporaryAccessService } from "@/services/TemporaryAccessService";
 
 interface Member {
   id: string;
@@ -30,6 +31,7 @@ export const EditMemberDialog = ({ isOpen, onClose, onSave, member }: EditMember
     email: member?.email || "",
     phone: member?.phone || ""
   });
+  const [isSending, setIsSending] = useState(false);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -59,6 +61,8 @@ export const EditMemberDialog = ({ isOpen, onClose, onSave, member }: EditMember
       return;
     }
     
+    setIsSending(true);
+
     if (member) {
       // Mise à jour d'un membre existant
       onSave({
@@ -68,24 +72,41 @@ export const EditMemberDialog = ({ isOpen, onClose, onSave, member }: EditMember
         email: formData.email,
         phone: formData.phone
       });
+      setIsSending(false);
+      onClose();
     } else {
-      // Nouveau membre
-      onSave({
+      // Nouveau membre - création et envoi d'un email d'invitation
+      const newMember = {
         id: `member-${Date.now()}`,
         name: formData.name,
         role: formData.role,
         email: formData.email,
         phone: formData.phone,
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.name.split(' ')[0]}`
-      });
+      };
+      
+      // Générer un lien d'accès temporaire
+      const { id, link } = TemporaryAccessService.generateTemporaryAccess(
+        formData.email,
+        formData.role,
+        formData.name,
+        72 // 72 heures de validité
+      );
+      
+      // Simuler l'envoi d'un email (dans une application réelle, vous utiliseriez un service d'email)
+      setTimeout(() => {
+        console.log(`Email d'invitation envoyé à ${formData.email} avec le lien: ${link}`);
+        toast.success(`Invitation envoyée à ${formData.email}`);
+        onSave(newMember);
+        setIsSending(false);
+        onClose();
+      }, 1500);
     }
-    
-    onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {member ? "Modifier le membre" : "Ajouter un nouveau membre"}
@@ -107,7 +128,7 @@ export const EditMemberDialog = ({ isOpen, onClose, onSave, member }: EditMember
           <div className="space-y-2">
             <Label htmlFor="role">Rôle</Label>
             <Select value={formData.role} onValueChange={(value) => handleChange("role", value)}>
-              <SelectTrigger id="role">
+              <SelectTrigger id="role" className="w-full">
                 <SelectValue placeholder="Sélectionnez un rôle" />
               </SelectTrigger>
               <SelectContent>
@@ -142,11 +163,11 @@ export const EditMemberDialog = ({ isOpen, onClose, onSave, member }: EditMember
           </div>
           
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSending}>
               Annuler
             </Button>
-            <Button type="submit">
-              {member ? "Enregistrer" : "Ajouter"}
+            <Button type="submit" disabled={isSending}>
+              {isSending ? 'Envoi en cours...' : member ? "Enregistrer" : "Ajouter et inviter"}
             </Button>
           </DialogFooter>
         </form>

@@ -1,8 +1,10 @@
 
 import { usePractice } from "@/hooks/usePractice";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const UserWelcome = () => {
   const { members } = usePractice();
+  const isMobile = useIsMobile();
   
   // Get the current user (for now, we'll just use the first admin in the members list)
   const currentUser = members.find(member => member.role === "admin");
@@ -28,7 +30,7 @@ export const UserWelcome = () => {
   if (!currentUser) {
     return (
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Bienvenue dans votre tableau de bord</h1>
+        <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>Bienvenue dans votre tableau de bord</h1>
         <p className="text-muted-foreground">{getCurrentDate()}</p>
       </div>
     );
@@ -36,7 +38,7 @@ export const UserWelcome = () => {
   
   return (
     <div className="mb-8">
-      <h1 className="text-3xl font-bold">
+      <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>
         {getGreeting()}, {currentUser.name}
       </h1>
       <p className="text-muted-foreground">{getCurrentDate()}</p>
