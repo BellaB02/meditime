@@ -25,8 +25,15 @@ import {
   Heart,
   Activity,
   Save,
-  Plus
+  Plus,
+  MapPin,
+  Upload,
+  Download,
+  FileUp
 } from "lucide-react";
+import { toast } from "sonner";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { DocumentService } from "@/services/DocumentService";
 
 // Types
 interface PatientDetails {
@@ -53,6 +60,14 @@ interface Visit {
   time: string;
   care: string;
   notes: string;
+}
+
+interface Prescription {
+  id: string;
+  title: string;
+  date: string;
+  doctor: string;
+  file: string;
 }
 
 // Données fictives
@@ -159,15 +174,100 @@ const visitsData: Record<string, Visit[]> = {
   ]
 };
 
+const prescriptionsData: Record<string, Prescription[]> = {
+  "p1": [
+    {
+      id: "pre-1",
+      title: "Ordonnance de renouvellement",
+      date: "15/04/2025",
+      doctor: "Dr. Martin",
+      file: "/documents/ordonnance_p1.pdf"
+    }
+  ],
+  "p2": [
+    {
+      id: "pre-2",
+      title: "Prescription cardiaque",
+      date: "10/04/2025",
+      doctor: "Dr. Dubois",
+      file: "/documents/ordonnance_p2.pdf"
+    }
+  ],
+  "p3": [
+    {
+      id: "pre-3",
+      title: "Traitement diabète",
+      date: "05/04/2025",
+      doctor: "Dr. Leroy",
+      file: "/documents/ordonnance_p3.pdf"
+    }
+  ]
+};
+
 const PatientFile = () => {
   const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState("info");
+  const [isAddVisitDialogOpen, setIsAddVisitDialogOpen] = useState(false);
+  const [isAddPrescriptionDialogOpen, setIsAddPrescriptionDialogOpen] = useState(false);
   
   // Récupérer les infos du patient depuis l'id
   const patient = id ? patientsMap[id] : null;
   const vitalSigns = id && vitalSignsData[id] ? vitalSignsData[id] : [];
   const visits = id && visitsData[id] ? visitsData[id] : [];
+  const prescriptions = id && prescriptionsData[id] ? prescriptionsData[id] : [];
   
+  const handleCallPatient = () => {
+    if (patient) {
+      window.location.href = `tel:${patient.phone.replace(/\s/g, '')}`;
+      toast.info(`Appel vers ${patient.name}`);
+    }
+  };
+  
+  const handleNavigateToAddress = () => {
+    if (patient) {
+      const encodedAddress = encodeURIComponent(patient.address);
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`, '_blank');
+      toast.info(`Navigation vers : ${patient.address}`);
+    }
+  };
+  
+  const handleGenerateReport = () => {
+    toast.success(`Génération du bilan pour ${patient?.name}`);
+    
+    setTimeout(() => {
+      toast.success("Bilan généré avec succès");
+    }, 1500);
+  };
+  
+  const handleAddAppointment = () => {
+    toast.success(`Rendez-vous ajouté pour ${patient?.name}`);
+  };
+  
+  const handleAddVisit = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success("Visite ajoutée avec succès");
+    setIsAddVisitDialogOpen(false);
+  };
+  
+  const handleMarkVisitComplete = (visit: Visit) => {
+    toast.success(`Soin "${visit.care}" marqué comme terminé`);
+    
+    // Générer une feuille de soins
+    if (patient) {
+      DocumentService.generateCareSheet("care-" + Date.now(), patient.name);
+    }
+  };
+  
+  const handleMarkVisitCanceled = (visit: Visit) => {
+    toast.info(`Soin "${visit.care}" marqué comme annulé`);
+  };
+  
+  const handleUploadPrescription = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success("Ordonnance ajoutée avec succès");
+    setIsAddPrescriptionDialogOpen(false);
+  };
+
   if (!patient) {
     return (
       <div className="text-center py-10">
@@ -191,11 +291,11 @@ const PatientFile = () => {
           <p className="text-sm text-muted-foreground">Dossier patient</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleAddAppointment}>
             <Calendar className="mr-2 h-4 w-4" />
             Ajouter RDV
           </Button>
-          <Button>
+          <Button onClick={handleGenerateReport}>
             <FileText className="mr-2 h-4 w-4" />
             Générer bilan
           </Button>
@@ -203,7 +303,7 @@ const PatientFile = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-3 w-full sm:w-auto">
+        <TabsList className="grid grid-cols-4 w-full sm:w-auto">
           <TabsTrigger value="info">
             Informations
           </TabsTrigger>
@@ -212,6 +312,9 @@ const PatientFile = () => {
           </TabsTrigger>
           <TabsTrigger value="visits">
             Visites
+          </TabsTrigger>
+          <TabsTrigger value="prescriptions">
+            Ordonnances
           </TabsTrigger>
         </TabsList>
 
@@ -235,7 +338,12 @@ const PatientFile = () => {
                     <Label htmlFor="phone">Téléphone</Label>
                     <div className="flex items-center">
                       <Input id="phone" value={patient.phone} readOnly />
-                      <Button variant="ghost" size="icon" className="ml-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="ml-2"
+                        onClick={handleCallPatient}
+                      >
                         <Phone size={18} />
                       </Button>
                     </div>
@@ -248,7 +356,17 @@ const PatientFile = () => {
                   </div>
                   <div>
                     <Label htmlFor="address">Adresse</Label>
-                    <Input id="address" value={patient.address} readOnly />
+                    <div className="flex items-center">
+                      <Input id="address" value={patient.address} readOnly />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="ml-2" 
+                        onClick={handleNavigateToAddress}
+                      >
+                        <MapPin size={18} />
+                      </Button>
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="insurance">Assurance</Label>
@@ -337,10 +455,61 @@ const PatientFile = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg">Historique des visites</CardTitle>
-              <Button size="sm">
-                <Calendar className="mr-2 h-4 w-4" />
-                Ajouter visite
-              </Button>
+              <Dialog open={isAddVisitDialogOpen} onOpenChange={setIsAddVisitDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Ajouter visite
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Ajouter une visite</DialogTitle>
+                    <DialogDescription>
+                      Programmez une nouvelle visite pour {patient.name}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleAddVisit} className="space-y-4 py-4">
+                    <div className="grid gap-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="visitDate">Date</Label>
+                          <Input id="visitDate" type="date" required />
+                        </div>
+                        <div>
+                          <Label htmlFor="visitTime">Heure</Label>
+                          <Input id="visitTime" type="time" required />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="visitCare">Type de soin</Label>
+                        <select 
+                          id="visitCare" 
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                          required
+                        >
+                          <option value="">Sélectionner un soin</option>
+                          <option value="Prise de sang">Prise de sang</option>
+                          <option value="Pansement">Pansement</option>
+                          <option value="Injection">Injection</option>
+                          <option value="Perfusion">Perfusion</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label htmlFor="visitNotes">Notes</Label>
+                        <textarea
+                          id="visitNotes"
+                          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm min-h-[80px]"
+                          placeholder="Détails supplémentaires..."
+                        ></textarea>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit">Ajouter</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </CardHeader>
             <CardContent>
               {visits.length > 0 ? (
@@ -367,12 +536,110 @@ const PatientFile = () => {
                       <div className="mt-2 bg-accent/50 p-3 rounded-md">
                         <p className="text-sm">{visit.notes}</p>
                       </div>
+                      <div className="mt-3 flex justify-end gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleMarkVisitComplete(visit)}
+                        >
+                          Marquer comme fait
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="border-destructive text-destructive hover:bg-destructive/10"
+                          onClick={() => handleMarkVisitCanceled(visit)}
+                        >
+                          Annuler
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-6 text-muted-foreground">
                   Aucune visite enregistrée pour ce patient
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="prescriptions" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg">Ordonnances</CardTitle>
+              <Dialog open={isAddPrescriptionDialogOpen} onOpenChange={setIsAddPrescriptionDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Ajouter ordonnance
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Ajouter une ordonnance</DialogTitle>
+                    <DialogDescription>
+                      Téléversez un fichier PDF contenant l'ordonnance
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleUploadPrescription} className="space-y-4 py-4">
+                    <div className="grid gap-4">
+                      <div>
+                        <Label htmlFor="prescriptionTitle">Titre</Label>
+                        <Input id="prescriptionTitle" placeholder="Ex: Renouvellement traitement" required />
+                      </div>
+                      <div>
+                        <Label htmlFor="prescriptionDate">Date de l'ordonnance</Label>
+                        <Input id="prescriptionDate" type="date" required />
+                      </div>
+                      <div>
+                        <Label htmlFor="prescriptionDoctor">Médecin prescripteur</Label>
+                        <Input id="prescriptionDoctor" placeholder="Dr. Nom" required />
+                      </div>
+                      <div>
+                        <Label htmlFor="prescriptionFile" className="block mb-2">Fichier PDF</Label>
+                        <div className="border-2 border-dashed rounded-md p-6 text-center">
+                          <FileUp size={24} className="mx-auto mb-2 text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Cliquez pour téléverser ou glissez-déposez
+                          </p>
+                          <Input id="prescriptionFile" type="file" accept=".pdf" className="hidden" />
+                          <Button type="button" variant="outline" onClick={() => document.getElementById('prescriptionFile')?.click()}>
+                            Sélectionner un fichier
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit">Ajouter</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              {prescriptions.length > 0 ? (
+                <div className="space-y-4">
+                  {prescriptions.map((prescription) => (
+                    <div key={prescription.id} className="flex justify-between items-center p-4 border rounded-md">
+                      <div>
+                        <h3 className="font-medium">{prescription.title}</h3>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          <div>Date: {prescription.date}</div>
+                          <div>Médecin: {prescription.doctor}</div>
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => toast.success("Téléchargement de l'ordonnance")}>
+                        <Download size={16} className="mr-2" />
+                        Télécharger
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  Aucune ordonnance enregistrée pour ce patient
                 </div>
               )}
             </CardContent>

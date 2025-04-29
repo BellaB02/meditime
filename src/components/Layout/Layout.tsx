@@ -13,11 +13,24 @@ const getTitleFromPath = (pathname: string): string => {
       return 'Patients';
     case '/calendar':
       return 'Planning';
+    case '/rounds':
+      return 'Tournées';
     case '/admin':
       return 'Administratif';
+    case '/admin/billing':
+      return 'Facturation';
+    case '/caresheets':
+      return 'Feuilles de soins';
+    case '/practice':
+      return 'Cabinet';
+    case '/settings':
+      return 'Paramètres';
     default:
       if (pathname.startsWith('/patients/')) {
         return 'Fiche Patient';
+      }
+      if (pathname.startsWith('/settings/')) {
+        return 'Paramètres';
       }
       return 'Page non trouvée';
   }

@@ -1,6 +1,9 @@
 
 import { NavLink } from 'react-router-dom';
-import { Calendar, FileText, Users, Home, Clock, Stethoscope, Receipt, Settings } from 'lucide-react';
+import {
+  Calendar, FileText, Users, Home, Clock, Stethoscope, Receipt, Settings,
+  FileCheck, MapPin, User, Building
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSidebar } from './SidebarProvider';
 
@@ -55,6 +58,15 @@ const Sidebar = () => {
           </li>
           <li>
             <NavLink 
+              to="/rounds" 
+              className={({isActive}) => cn('nav-link', isActive && 'active')}
+            >
+              <MapPin size={20} />
+              {isOpen && <span>Tournées</span>}
+            </NavLink>
+          </li>
+          <li>
+            <NavLink 
               to="/admin" 
               className={({isActive}) => cn('nav-link', isActive && 'active')}
             >
@@ -69,6 +81,24 @@ const Sidebar = () => {
             >
               <Receipt size={20} />
               {isOpen && <span>Facturation</span>}
+            </NavLink>
+          </li>
+          <li>
+            <NavLink 
+              to="/caresheets" 
+              className={({isActive}) => cn('nav-link', isActive && 'active')}
+            >
+              <FileCheck size={20} />
+              {isOpen && <span>Feuilles de soins</span>}
+            </NavLink>
+          </li>
+          <li>
+            <NavLink 
+              to="/practice" 
+              className={({isActive}) => cn('nav-link', isActive && 'active')}
+            >
+              <Building size={20} />
+              {isOpen && <span>Cabinet</span>}
             </NavLink>
           </li>
           <li>
