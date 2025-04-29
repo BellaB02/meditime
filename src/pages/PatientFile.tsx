@@ -65,6 +65,15 @@ const patientFormSchema = z.object({
 
 type PatientFormValues = z.infer<typeof patientFormSchema>;
 
+// Interface for visit type
+interface Visit {
+  id: string;
+  date: string;
+  time: string;
+  care: string;
+  notes: string;
+}
+
 const PatientFile = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -79,6 +88,23 @@ const PatientFile = () => {
   const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [medicalNotes, setMedicalNotes] = useState("");
+  // Ajouter un state pour les visites
+  const [visits, setVisits] = useState<Visit[]>([
+    {
+      id: "v1",
+      date: "21/05/2025",
+      time: "09:30",
+      care: "Pansement",
+      notes: "Changement de pansement suite à une plaie au niveau du pied droit"
+    },
+    {
+      id: "v2",
+      date: "23/05/2025",
+      time: "14:00",
+      care: "Injection",
+      notes: "Administration d'insuline suite à un changement de traitement"
+    }
+  ]);
   
   // Recupérer les données du patient
   useEffect(() => {
@@ -200,7 +226,7 @@ const PatientFile = () => {
     setIsAddVisitDialogOpen(false);
   };
   
-  const handleMarkVisitComplete = (visit: any) => {
+  const handleMarkVisitComplete = (visit: Visit) => {
     toast.success(`Soin "${visit.care}" marqué comme terminé`);
     
     // Générer une feuille de soins
@@ -209,7 +235,7 @@ const PatientFile = () => {
     }
   };
   
-  const handleMarkVisitCanceled = (visit: any) => {
+  const handleMarkVisitCanceled = (visit: Visit) => {
     toast.info(`Soin "${visit.care}" marqué comme annulé`);
   };
   
@@ -534,7 +560,7 @@ const PatientFile = () => {
                   <DialogHeader>
                     <DialogTitle>Ajouter une visite</DialogTitle>
                     <DialogDescription>
-                      Programmez une nouvelle visite pour {patient.name}
+                      Programmez une nouvelle visite pour {patientInfo.name}
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleAddVisit} className="space-y-4 py-4">
@@ -743,3 +769,4 @@ const PatientFile = () => {
 };
 
 export default PatientFile;
+
