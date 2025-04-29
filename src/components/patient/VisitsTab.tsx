@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, Check, X, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { DocumentService } from "@/services/DocumentService";
 import { PatientInfo } from "@/services/PatientService";
@@ -14,6 +14,7 @@ export interface Visit {
   time: string;
   care: string;
   notes: string;
+  status?: 'pending' | 'completed' | 'cancelled';
 }
 
 type VisitsTabProps = {
@@ -23,6 +24,12 @@ type VisitsTabProps = {
 
 const VisitsTab: React.FC<VisitsTabProps> = ({ visits, patientInfo }) => {
   const [isAddVisitDialogOpen, setIsAddVisitDialogOpen] = useState(false);
+  const [visitsList, setVisitsList] = useState<Visit[]>(
+    visits.map(visit => ({
+      ...visit,
+      status: visit.status || 'pending'
+    }))
+  );
   
   const handleAddVisit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,17 +37,26 @@ const VisitsTab: React.FC<VisitsTabProps> = ({ visits, patientInfo }) => {
     setIsAddVisitDialogOpen(false);
   };
   
-  const handleMarkVisitComplete = (visit: Visit) => {
-    toast.success(`Soin "${visit.care}" marqué comme terminé`);
+  const handleUpdateVisitStatus = (visit: Visit, newStatus: 'pending' | 'completed' | 'cancelled') => {
+    setVisitsList(prevVisits => 
+      prevVisits.map(v => 
+        v.id === visit.id 
+          ? { ...v, status: newStatus } 
+          : v
+      )
+    );
     
-    // Générer une feuille de soins
-    if (patientInfo) {
+    const statusText = 
+      newStatus === 'completed' ? "terminé" : 
+      newStatus === 'cancelled' ? "annulé" :
+      "remis en cours";
+    
+    toast.success(`Soin "${visit.care}" marqué comme ${statusText}`);
+    
+    // Générer une feuille de soins uniquement si le soin est marqué comme terminé
+    if (newStatus === 'completed' && patientInfo) {
       DocumentService.generateCareSheet("care-" + Date.now(), `${patientInfo.firstName} ${patientInfo.name}`);
     }
-  };
-  
-  const handleMarkVisitCanceled = (visit: Visit) => {
-    toast.info(`Soin "${visit.care}" marqué comme annulé`);
   };
 
   return (
@@ -55,10 +71,19 @@ const VisitsTab: React.FC<VisitsTabProps> = ({ visits, patientInfo }) => {
         />
       </CardHeader>
       <CardContent>
-        {visits.length > 0 ? (
+        {visitsList.length > 0 ? (
           <div className="space-y-4">
-            {visits.map((visit, index) => (
-              <div key={index} className="border rounded-md p-4">
+            {visitsList.map((visit, index) => (
+              <div 
+                key={visit.id || index} 
+                className={`border rounded-md p-4 ${
+                  visit.status === 'completed' 
+                    ? 'border-green-200 bg-green-50/50' 
+                    : visit.status === 'cancelled' 
+                    ? 'border-red-200 bg-red-50/50' 
+                    : ''
+                }`}
+              >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex gap-3">
                     <div className="bg-accent p-2 rounded-full">
@@ -72,29 +97,58 @@ const VisitsTab: React.FC<VisitsTabProps> = ({ visits, patientInfo }) => {
                       </div>
                     </div>
                   </div>
-                  <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm">
-                    {visit.care}
+                  <div 
+                    className={`px-3 py-1 rounded-full text-sm ${
+                      visit.status === 'completed' 
+                        ? 'bg-green-100 text-green-800' 
+                        : visit.status === 'cancelled' 
+                        ? 'bg-red-100 text-red-800' 
+                        : 'bg-primary/10 text-primary'
+                    }`}
+                  >
+                    {visit.status === 'completed' 
+                      ? 'Terminé' 
+                      : visit.status === 'cancelled' 
+                      ? 'Annulé' 
+                      : visit.care}
                   </div>
                 </div>
                 <div className="mt-2 bg-accent/50 p-3 rounded-md">
                   <p className="text-sm">{visit.notes}</p>
                 </div>
                 <div className="mt-3 flex justify-end gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handleMarkVisitComplete(visit)}
-                  >
-                    Marquer comme fait
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="border-destructive text-destructive hover:bg-destructive/10"
-                    onClick={() => handleMarkVisitCanceled(visit)}
-                  >
-                    Annuler
-                  </Button>
+                  {visit.status === 'pending' && (
+                    <>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleUpdateVisitStatus(visit, 'completed')}
+                      >
+                        <Check className="mr-2 h-3 w-3" />
+                        Marquer comme fait
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="border-destructive text-destructive hover:bg-destructive/10"
+                        onClick={() => handleUpdateVisitStatus(visit, 'cancelled')}
+                      >
+                        <X className="mr-2 h-3 w-3" />
+                        Annuler
+                      </Button>
+                    </>
+                  )}
+                  
+                  {(visit.status === 'completed' || visit.status === 'cancelled') && (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleUpdateVisitStatus(visit, 'pending')}
+                    >
+                      <RotateCcw className="mr-2 h-3 w-3" />
+                      Remettre en cours
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

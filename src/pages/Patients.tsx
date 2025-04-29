@@ -18,6 +18,7 @@ import AddPatientForm from "@/components/patients/AddPatientForm";
 import { toast } from "sonner";
 import { PatientInfo, PatientService } from "@/services/PatientService";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from "react-router-dom";
 
 interface Patient {
   id: string;
@@ -34,6 +35,7 @@ const Patients = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddPatientOpen, setIsAddPatientOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>(() => {
     // Convertir les données du PatientService en format compatible
     return PatientService.getAllPatients().map(patientInfo => ({
@@ -112,6 +114,11 @@ const Patients = () => {
     }
   };
 
+  // Fonction pour voir le dossier du patient
+  const handleViewPatient = (patientId: string) => {
+    navigate(`/patients/${patientId}`);
+  };
+
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex flex-col sm:flex-row justify-between gap-4 items-center">
@@ -188,11 +195,9 @@ const Patients = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={`/patients/${patient.id}`}>
-                            <FileText className="mr-2 h-4 w-4" />
-                            Voir
-                          </a>
+                        <Button size="sm" variant="outline" onClick={() => handleViewPatient(patient.id)}>
+                          <FileText className="mr-2 h-4 w-4" />
+                          Voir
                         </Button>
                         <Button size="sm" variant="outline">
                           <Calendar className="mr-2 h-4 w-4" />

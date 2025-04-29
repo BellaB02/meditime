@@ -2,9 +2,10 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, CheckCircle, Car, Clock, Play } from "lucide-react";
+import { MapPin, CheckCircle, Car, Clock, Play, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { CompleteRoundAnimation } from "@/components/Rounds/CompleteRoundAnimation";
+import { StartRoundAnimation } from "@/components/Rounds/StartRoundAnimation";
 import { motion } from "framer-motion";
 
 interface RoundStop {
@@ -101,19 +102,24 @@ const initialRounds: Round[] = [
 
 const Rounds = () => {
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
-  const [showAnimation, setShowAnimation] = useState(false);
+  const [showCompleteAnimation, setShowCompleteAnimation] = useState(false);
+  const [showStartAnimation, setShowStartAnimation] = useState(false);
   
   // Démarrer une tournée
   const handleStartRound = (roundId: string) => {
-    setRounds(prev => 
-      prev.map(round => 
-        round.id === roundId 
-          ? { ...round, started: true } 
-          : round
-      )
-    );
+    setShowStartAnimation(true);
     
-    toast.success("Tournée démarrée");
+    setTimeout(() => {
+      setRounds(prev => 
+        prev.map(round => 
+          round.id === roundId 
+            ? { ...round, started: true } 
+            : round
+        )
+      );
+      
+      toast.success("Tournée démarrée");
+    }, 2000); // Attendre que l'animation se termine avant de mettre à jour l'état
   };
   
   // Marquer un arrêt comme complété
@@ -141,6 +147,29 @@ const Rounds = () => {
     toast.success("Soin marqué comme terminé");
   };
   
+  // Remettre un arrêt en cours
+  const handleReactivateStop = (roundId: string, stopId: string) => {
+    setRounds(prev => 
+      prev.map(round => {
+        if (round.id === roundId) {
+          const updatedStops = round.stops.map(stop => 
+            stop.id === stopId ? { ...stop, completed: false } : stop
+          );
+          
+          // Mise à jour de l'état de la tournée
+          return {
+            ...round,
+            stops: updatedStops,
+            completed: false // La tournée n'est plus complétée
+          };
+        }
+        return round;
+      })
+    );
+    
+    toast.success("Soin remis en cours");
+  };
+  
   // Terminer une tournée complète
   const handleCompleteRound = (roundId: string) => {
     setRounds(prev => 
@@ -151,7 +180,7 @@ const Rounds = () => {
       )
     );
     
-    setShowAnimation(true);
+    setShowCompleteAnimation(true);
     toast.success("Tournée terminée avec succès");
   };
   
@@ -235,9 +264,15 @@ const Rounds = () => {
                           Itinéraire
                         </Button>
                         {stop.completed ? (
-                          <Button variant="ghost" size="sm" className="text-green-600" disabled>
-                            <CheckCircle className="mr-2 h-3 w-3" />
-                            Terminé
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-amber-600"
+                            onClick={() => handleReactivateStop(round.id, stop.id)}
+                            disabled={!round.started || round.completed}
+                          >
+                            <RotateCcw className="mr-2 h-3 w-3" />
+                            Remettre en cours
                           </Button>
                         ) : (
                           <Button 
@@ -261,8 +296,13 @@ const Rounds = () => {
       </div>
       
       <CompleteRoundAnimation 
-        isOpen={showAnimation} 
-        onClose={() => setShowAnimation(false)} 
+        isOpen={showCompleteAnimation} 
+        onClose={() => setShowCompleteAnimation(false)} 
+      />
+      
+      <StartRoundAnimation
+        isOpen={showStartAnimation}
+        onClose={() => setShowStartAnimation(false)}
       />
     </div>
   );
