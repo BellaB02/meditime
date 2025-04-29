@@ -12,6 +12,13 @@ export const DateFormatService = {
   },
   
   /**
+   * Formate une date donnée au format français
+   */
+  formatDate: (date: Date): string => {
+    return format(date, "dd/MM/yyyy", { locale: fr });
+  },
+  
+  /**
    * Formate une heure donnée
    */
   formatTime: (date?: Date): string => {

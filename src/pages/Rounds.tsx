@@ -95,8 +95,8 @@ export default function Rounds() {
 
       {/* Start round animation */}
       <StartRoundAnimation
-        show={showStartAnimation}
-        onComplete={() => setShowStartAnimation(false)}
+        isOpen={showStartAnimation}
+        onClose={() => setShowStartAnimation(false)}
       />
       
       {/* Car parking animation */}
@@ -107,8 +107,8 @@ export default function Rounds() {
 
       {/* Complete round animation */}
       <CompleteRoundAnimation
-        show={showCompleteAnimation}
-        onComplete={() => setShowCompleteAnimation(false)}
+        isOpen={showCompleteAnimation}
+        onClose={() => setShowCompleteAnimation(false)}
       />
     </div>
   );

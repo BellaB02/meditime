@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import StatsCards from "@/components/Dashboard/StatsCards";
-import DailyCareProgress from "@/components/Dashboard/DailyCareProgress";
+import { DailyCareProgress } from "@/components/Dashboard/DailyCareProgress";
 import { Welcome } from "@/components/Dashboard/Welcome";
 import AppointmentList from "@/components/Dashboard/AppointmentList";
 import { motion } from "framer-motion";
@@ -96,7 +96,10 @@ export default function Index() {
       <StatsCards />
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <DailyCareProgress />
+        <DailyCareProgress 
+          completed={1}
+          total={3}
+        />
         
         <AppointmentList 
           title="Rendez-vous d'aujourd'hui"

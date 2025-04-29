@@ -1,6 +1,5 @@
 
 import { usePractice } from "@/hooks/usePractice";
-import { calendarFormat } from "date-fns";
 
 export const UserWelcome = () => {
   const { members } = usePractice();
