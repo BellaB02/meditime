@@ -3,8 +3,8 @@ import { PatientInfoService, PatientInfo } from './PatientInfoService';
 import { VitalSignsService, VitalSign } from './VitalSignsService';
 import { PrescriptionsService, Prescription } from './PrescriptionsService';
 
-// Re-export the types for backward compatibility
-export { PatientInfo, VitalSign, Prescription };
+// Re-export the types for backward compatibility using 'export type'
+export type { PatientInfo, VitalSign, Prescription };
 
 // Create a consolidated service that delegates to the specialized services
 export const PatientService = {
