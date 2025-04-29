@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { Clock, User, MapPin, CheckCircle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,7 @@ import { toast } from "sonner";
 import { DocumentService } from "@/services/DocumentService";
 
 // Types pour les rendez-vous
-interface Appointment {
+export interface Appointment {
   id: string;
   time: string;
   patient: {
@@ -19,13 +18,13 @@ interface Appointment {
   completed?: boolean;
 }
 
-interface AppointmentListProps {
+export interface AppointmentListProps {
   title: string;
   appointments: Appointment[];
   onAppointmentComplete?: (appointmentId: string) => void;
 }
 
-const AppointmentList = ({ title, appointments = [], onAppointmentComplete }: AppointmentListProps) => {
+const AppointmentList = ({ title = "Rendez-vous", appointments = [], onAppointmentComplete }: AppointmentListProps) => {
   const [completedAppointments, setCompletedAppointments] = useState<string[]>([]);
 
   const handleMarkAsCompleted = (appointmentId: string) => {

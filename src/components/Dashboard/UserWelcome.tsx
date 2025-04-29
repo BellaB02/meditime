@@ -2,12 +2,17 @@
 import { usePractice } from "@/hooks/usePractice";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-export const UserWelcome = () => {
+interface UserWelcomeProps {
+  firstName?: string;
+  role?: string;
+}
+
+export const UserWelcome = ({ firstName, role }: UserWelcomeProps = {}) => {
   const { members } = usePractice();
   const isMobile = useIsMobile();
   
-  // Get the current user (for now, we'll just use the first admin in the members list)
-  const currentUser = members.find(member => member.role === "admin");
+  // Get the current user (for now, we'll just use the first admin in the members list or the provided props)
+  const currentUser = firstName ? { name: firstName, role } : members.find(member => member.role === "admin");
   
   // Get greeting based on time of day
   const getGreeting = () => {
@@ -39,7 +44,7 @@ export const UserWelcome = () => {
   return (
     <div className="mb-8">
       <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>
-        {getGreeting()}, {currentUser.name}
+        {getGreeting()}, {firstName || currentUser.name}
       </h1>
       <p className="text-muted-foreground">{getCurrentDate()}</p>
     </div>

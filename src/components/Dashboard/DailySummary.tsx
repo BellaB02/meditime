@@ -4,7 +4,7 @@ import { DateFormatService } from "@/services/DateFormatService";
 import { UserWelcome } from "./UserWelcome";
 import { Check, Clock } from "lucide-react";
 
-interface DailySummaryProps {
+export interface DailySummaryProps {
   appointmentsCount: number;
   completedAppointmentsCount: number;
   nextAppointment?: {
@@ -14,8 +14,8 @@ interface DailySummaryProps {
 }
 
 export const DailySummary = ({ 
-  appointmentsCount, 
-  completedAppointmentsCount,
+  appointmentsCount = 0, 
+  completedAppointmentsCount = 0,
   nextAppointment 
 }: DailySummaryProps) => {
   // Current date in French format

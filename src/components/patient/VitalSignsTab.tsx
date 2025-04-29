@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,11 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
-type VitalSignsTabProps = {
+export type VitalSignsTabProps = {
   vitalSigns: LegacyVitalSign[];
+  patientId?: string; // Add patientId as an optional prop
 };
 
-const VitalSignsTab: React.FC<VitalSignsTabProps> = ({ vitalSigns: initialVitalSigns }) => {
+const VitalSignsTab: React.FC<VitalSignsTabProps> = ({ vitalSigns: initialVitalSigns, patientId }) => {
   const [vitalSigns, setVitalSigns] = useState<LegacyVitalSign[]>(initialVitalSigns);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
