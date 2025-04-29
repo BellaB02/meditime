@@ -28,9 +28,9 @@ export function useProfile() {
       try {
         setLoading(true);
         
-        // Utilisation de la fonction RPC get_profile
-        const { data, error } = await supabase.rpc('get_profile', {
-          user_id: user.id
+        // Use a typesafe approach for RPC calls
+        const { data, error } = await supabase.functions.invoke('get-profile', {
+          body: { user_id: user.id }
         });
 
         if (error) {
@@ -56,19 +56,21 @@ export function useProfile() {
     if (!user) return;
 
     try {
-      // Utilisation de la fonction RPC update_user_profile
-      const { error } = await supabase.rpc('update_user_profile', {
-        user_id: user.id,
-        profile_data: updates
+      // Use a typesafe approach for RPC calls
+      const { error } = await supabase.functions.invoke('update-profile', {
+        body: { 
+          user_id: user.id,
+          profile_data: updates 
+        }
       });
 
       if (error) {
         throw error;
       }
 
-      // Récupérer le profil mis à jour avec la fonction RPC
-      const { data, error: fetchError } = await supabase.rpc('get_profile', {
-        user_id: user.id
+      // Fetch the updated profile
+      const { data, error: fetchError } = await supabase.functions.invoke('get-profile', {
+        body: { user_id: user.id }
       });
 
       if (fetchError) {

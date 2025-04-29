@@ -112,13 +112,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     
     try {
-      // Utilisation de la fonction RPC update_user_profile
-      const { error } = await supabase.rpc('update_user_profile', {
-        user_id: user.id,
-        profile_data: {
-          first_name: data.firstName,
-          last_name: data.lastName,
-          updated_at: new Date().toISOString()
+      // Use Edge Function instead of RPC
+      const { error } = await supabase.functions.invoke('update-profile', {
+        body: { 
+          user_id: user.id,
+          profile_data: {
+            first_name: data.firstName,
+            last_name: data.lastName,
+            updated_at: new Date().toISOString()
+          }
         }
       });
       
