@@ -12,11 +12,20 @@ export interface CareInfo {
   description?: string;
 }
 
+export interface PrescriptionInfo {
+  id: string;
+  title: string;
+  date: string;
+  doctor: string;
+  file?: string;
+  content?: string;
+}
+
 export const PDFGenerationService = {
   /**
    * Génère un PDF pré-rempli avec les informations patient et soins
    */
-  generatePrefilledPDF: (patientId?: string, careInfo?: CareInfo): jsPDF | null => {
+  generatePrefilledPDF: (patientId?: string, careInfo?: CareInfo, prescriptions?: PrescriptionInfo[]): jsPDF | null => {
     try {
       const patientInfo = PatientService.validatePatientInfo(patientId);
       
@@ -51,10 +60,27 @@ export const PDFGenerationService = {
       doc.text(`Heure: ${careInfo?.time || DateFormatService.formatTime()}`, 15, 116);
       doc.text(`Description: ${careInfo?.description || "Non renseignée"}`, 15, 123);
       
+      // Ordonnances associées
+      if (prescriptions && prescriptions.length > 0) {
+        let yPosition = 140;
+        
+        doc.setFontSize(12);
+        doc.text("ORDONNANCES ASSOCIÉES", 15, yPosition);
+        yPosition += 8;
+        
+        doc.setFontSize(10);
+        prescriptions.forEach((prescription, index) => {
+          doc.text(`${index + 1}. ${prescription.title}`, 15, yPosition);
+          yPosition += 5;
+          doc.text(`   Date: ${prescription.date} - Dr. ${prescription.doctor}`, 15, yPosition);
+          yPosition += 8;
+        });
+      }
+      
       // Signature
       doc.setFontSize(12);
-      doc.text("SIGNATURE DU PRATICIEN", 15, 150);
-      doc.line(15, 165, 80, 165);
+      doc.text("SIGNATURE DU PRATICIEN", 15, 220);
+      doc.line(15, 235, 80, 235);
       
       return doc;
     } catch (error) {

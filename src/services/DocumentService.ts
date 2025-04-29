@@ -1,7 +1,7 @@
 
 import { toast } from "sonner";
 import { PatientService } from "./PatientService";
-import { PDFGenerationService, CareInfo } from "./PDFGenerationService";
+import { PDFGenerationService, CareInfo, PrescriptionInfo } from "./PDFGenerationService";
 import { StaticDocumentService } from "./StaticDocumentService";
 import { DateFormatService } from "./DateFormatService";
 
@@ -27,13 +27,17 @@ export interface Document {
     dateOfBirth?: string;
   };
   careInfo?: CareInfo;
+  prescriptions?: PrescriptionInfo[];
 }
 
 export const DocumentService = {
   downloadDocument: (documentKey: string, patientId?: string, careInfo?: any, preFilled: boolean = false) => {
     // Si preFilled est true, générer un PDF pré-rempli personnalisé
     if (preFilled && patientId) {
-      const doc = PDFGenerationService.generatePrefilledPDF(patientId, careInfo);
+      // Récupérer les ordonnances associées au patient
+      const prescriptions = this.getPatientPrescriptions(patientId);
+      
+      const doc = PDFGenerationService.generatePrefilledPDF(patientId, careInfo, prescriptions);
       
       if (doc) {
         PDFGenerationService.savePDF(doc, patientId);
@@ -96,7 +100,10 @@ export const DocumentService = {
   printDocument: (documentKey: string, patientId?: string, careInfo?: any, preFilled: boolean = false) => {
     // Si preFilled est true, générer un PDF pré-rempli pour impression
     if (preFilled && patientId) {
-      const doc = PDFGenerationService.generatePrefilledPDF(patientId, careInfo);
+      // Récupérer les ordonnances associées au patient
+      const prescriptions = this.getPatientPrescriptions(patientId);
+      
+      const doc = PDFGenerationService.generatePrefilledPDF(patientId, careInfo, prescriptions);
       
       if (doc) {
         // Ouvrir le PDF dans une nouvelle fenêtre pour impression
@@ -148,9 +155,48 @@ export const DocumentService = {
     return true;
   },
   
+  // Fonction utilitaire pour récupérer les ordonnances d'un patient
+  getPatientPrescriptions: (patientId: string): PrescriptionInfo[] => {
+    // Simulation de données d'ordonnances
+    const prescriptionsData: Record<string, PrescriptionInfo[]> = {
+      "p1": [
+        {
+          id: "pre-1",
+          title: "Ordonnance de renouvellement",
+          date: "15/04/2025",
+          doctor: "Martin",
+          file: "/documents/ordonnance_p1.pdf"
+        }
+      ],
+      "p2": [
+        {
+          id: "pre-2",
+          title: "Prescription cardiaque",
+          date: "10/04/2025",
+          doctor: "Dubois",
+          file: "/documents/ordonnance_p2.pdf"
+        }
+      ],
+      "p3": [
+        {
+          id: "pre-3",
+          title: "Traitement diabète",
+          date: "05/04/2025",
+          doctor: "Leroy",
+          file: "/documents/ordonnance_p3.pdf"
+        }
+      ]
+    };
+    
+    return prescriptionsData[patientId] || [];
+  },
+  
   generateCareSheet: (careId: string, patientName: string, patientId?: string) => {
     // Récupérer les informations du patient si l'ID est fourni
     const patientInfo = patientId ? PatientService.getPatientInfo(patientId) : undefined;
+    
+    // Récupérer les ordonnances associées au patient
+    const prescriptions = patientId ? this.getPatientPrescriptions(patientId) : [];
     
     // Notification plus détaillée des informations utilisées pour la feuille de soins
     if (patientInfo) {
@@ -174,7 +220,8 @@ export const DocumentService = {
         type: "Soin infirmier",
         date: DateFormatService.formatCurrentDate(),
         time: new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-      }
+      },
+      prescriptions
     };
   },
   

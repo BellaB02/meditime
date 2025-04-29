@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,6 +7,8 @@ import { AppointmentList } from "@/components/Calendar/AppointmentList";
 import { Appointment } from "@/components/Calendar/AppointmentCard";
 import { DocumentService } from "@/services/DocumentService";
 import { toast } from "sonner";
+import { AddAppointmentDialog } from "@/components/Calendar/AddAppointmentDialog";
+import { motion } from "framer-motion";
 
 // Données fictives
 const appointmentsData: Appointment[] = [
@@ -70,6 +73,7 @@ const Calendar = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [view, setView] = useState<"calendar" | "list">("calendar");
   const [appointments, setAppointments] = useState<Appointment[]>(appointmentsData);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   
   // Filtrer les rendez-vous pour la date sélectionnée
   const filteredAppointments = date ? appointments.filter(appointment => 
@@ -80,6 +84,11 @@ const Calendar = () => {
   const sortedAppointments = [...filteredAppointments].sort((a, b) => {
     return a.time.localeCompare(b.time);
   });
+
+  // Ajouter un nouveau rendez-vous
+  const handleAddAppointment = (newAppointment: Appointment) => {
+    setAppointments(prev => [...prev, newAppointment]);
+  };
 
   // Fonction pour marquer un rendez-vous comme terminé
   const handleMarkAsCompleted = useCallback((appointmentId: string) => {
@@ -107,8 +116,17 @@ const Calendar = () => {
   }, [appointments]);
 
   return (
-    <div className="animate-fade-in">
-      <CalendarHeader view={view} setView={setView} />
+    <motion.div 
+      className="animate-fade-in"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
+      <CalendarHeader 
+        view={view} 
+        setView={setView} 
+        onAddAppointment={() => setIsAddDialogOpen(true)}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1">
@@ -133,7 +151,13 @@ const Calendar = () => {
           />
         </div>
       </div>
-    </div>
+      
+      <AddAppointmentDialog 
+        isOpen={isAddDialogOpen}
+        onClose={() => setIsAddDialogOpen(false)}
+        onAddAppointment={handleAddAppointment}
+      />
+    </motion.div>
   );
 };
 

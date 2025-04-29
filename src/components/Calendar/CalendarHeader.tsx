@@ -6,9 +6,10 @@ import { Plus } from "lucide-react";
 interface CalendarHeaderProps {
   view: "calendar" | "list";
   setView: (view: "calendar" | "list") => void;
+  onAddAppointment: () => void;
 }
 
-export const CalendarHeader = ({ view, setView }: CalendarHeaderProps) => {
+export const CalendarHeader = ({ view, setView, onAddAppointment }: CalendarHeaderProps) => {
   return (
     <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
       <h1 className="text-2xl font-bold">Planning des tournées</h1>
@@ -19,7 +20,7 @@ export const CalendarHeader = ({ view, setView }: CalendarHeaderProps) => {
             <TabsTrigger value="list">Liste</TabsTrigger>
           </TabsList>
         </Tabs>
-        <Button>
+        <Button onClick={onAddAppointment}>
           <Plus className="mr-2 h-4 w-4" />
           Ajouter RDV
         </Button>
