@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,6 +14,7 @@ import { z } from "zod";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, CreditCard, CheckCircle2, UploadCloud } from "lucide-react";
 import { PatientService } from "@/services/PatientService";
+import PricingTab from "@/components/Settings/PricingTab";
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
@@ -88,6 +88,7 @@ const Settings = () => {
         <TabsList className="mb-6">
           <TabsTrigger value="profile">Profil</TabsTrigger>
           <TabsTrigger value="subscription">Abonnement</TabsTrigger>
+          <TabsTrigger value="pricing">Tarification</TabsTrigger>
           <TabsTrigger value="preferences">Préférences</TabsTrigger>
           <TabsTrigger value="app-info">À propos</TabsTrigger>
         </TabsList>
@@ -315,6 +316,10 @@ const Settings = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+        
+        <TabsContent value="pricing">
+          <PricingTab />
         </TabsContent>
         
         <TabsContent value="preferences" className="space-y-6">

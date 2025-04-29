@@ -1,7 +1,7 @@
 
-import { useState } from "react";
-import { useParams } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Dialog, 
+  DialogTrigger, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription, 
+  DialogFooter
+} from "@/components/ui/dialog";
+import {
   User,
   Phone,
   Calendar,
@@ -29,218 +38,160 @@ import {
   MapPin,
   Upload,
   Download,
-  FileUp
+  FileUp,
+  Edit,
+  Pencil
 } from "lucide-react";
 import { toast } from "sonner";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DocumentService } from "@/services/DocumentService";
+import { PatientService, PatientInfo, VitalSign, Prescription } from "@/services/PatientService";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
-// Types
-interface PatientDetails {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  address: string;
-  birthdate: string;
-  insurance: string;
-  doctor: string;
-}
+// Schema pour la validation du formulaire de modification patient
+const patientFormSchema = z.object({
+  name: z.string().min(2, { message: "Le nom doit comporter au moins 2 caractères" }),
+  firstName: z.string().min(2, { message: "Le prénom doit comporter au moins 2 caractères" }),
+  phone: z.string().optional(),
+  email: z.string().email({ message: "Veuillez saisir un email valide" }).optional().or(z.literal("")),
+  address: z.string().optional(),
+  birthdate: z.string().optional(),
+  insurance: z.string().optional(),
+  doctor: z.string().optional(),
+  notes: z.string().optional()
+});
 
-interface VitalSigns {
-  date: string;
-  temperature: string;
-  heartRate: string;
-  bloodPressure: string;
-  notes: string;
-}
-
-interface Visit {
-  date: string;
-  time: string;
-  care: string;
-  notes: string;
-}
-
-interface Prescription {
-  id: string;
-  title: string;
-  date: string;
-  doctor: string;
-  file: string;
-}
-
-// Données fictives
-const patientsMap: Record<string, PatientDetails> = {
-  "p1": {
-    id: "p1",
-    name: "Jean Dupont",
-    phone: "06 12 34 56 78",
-    email: "jean.dupont@email.com",
-    address: "12 rue des Lilas, 75010 Paris",
-    birthdate: "15/05/1958",
-    insurance: "Carte vitale n°12345678901234",
-    doctor: "Dr. Martin (Généraliste)"
-  },
-  "p2": {
-    id: "p2",
-    name: "Marie Martin",
-    phone: "06 23 45 67 89",
-    email: "marie.martin@email.com",
-    address: "5 avenue Victor Hugo, 75016 Paris",
-    birthdate: "22/11/1945",
-    insurance: "Carte vitale n°23456789012345",
-    doctor: "Dr. Dubois (Cardiologue)"
-  },
-  "p3": {
-    id: "p3",
-    name: "Robert Petit",
-    phone: "06 34 56 78 90",
-    email: "robert.petit@email.com",
-    address: "8 rue du Commerce, 75015 Paris",
-    birthdate: "03/07/1970",
-    insurance: "Carte vitale n°34567890123456",
-    doctor: "Dr. Leroy (Diabétologue)"
-  }
-};
-
-const vitalSignsData: Record<string, VitalSigns[]> = {
-  "p1": [
-    {
-      date: "Aujourd'hui",
-      temperature: "37.2°C",
-      heartRate: "72 bpm",
-      bloodPressure: "130/85",
-      notes: "Patient stable"
-    },
-    {
-      date: "Hier",
-      temperature: "37.0°C",
-      heartRate: "75 bpm",
-      bloodPressure: "132/86",
-      notes: "Légère fatigue"
-    }
-  ],
-  "p2": [
-    {
-      date: "Il y a 2 jours",
-      temperature: "37.4°C",
-      heartRate: "80 bpm",
-      bloodPressure: "145/90",
-      notes: "Tension élevée, à surveiller"
-    }
-  ],
-  "p3": [
-    {
-      date: "Aujourd'hui",
-      temperature: "36.8°C",
-      heartRate: "70 bpm",
-      bloodPressure: "128/82",
-      notes: "Glycémie: 1.25 g/l"
-    }
-  ]
-};
-
-const visitsData: Record<string, Visit[]> = {
-  "p1": [
-    {
-      date: "Aujourd'hui",
-      time: "08:30",
-      care: "Prise de sang",
-      notes: "Bilan trimestriel"
-    },
-    {
-      date: "Il y a 3 jours",
-      time: "09:15",
-      care: "Pansement",
-      notes: "Cicatrisation en cours"
-    }
-  ],
-  "p2": [
-    {
-      date: "Hier",
-      time: "10:15",
-      care: "Changement pansement",
-      notes: "Cicatrisation difficile"
-    }
-  ],
-  "p3": [
-    {
-      date: "Aujourd'hui",
-      time: "14:00",
-      care: "Injection insuline",
-      notes: "Insuline lente: 18 unités"
-    }
-  ]
-};
-
-const prescriptionsData: Record<string, Prescription[]> = {
-  "p1": [
-    {
-      id: "pre-1",
-      title: "Ordonnance de renouvellement",
-      date: "15/04/2025",
-      doctor: "Dr. Martin",
-      file: "/documents/ordonnance_p1.pdf"
-    }
-  ],
-  "p2": [
-    {
-      id: "pre-2",
-      title: "Prescription cardiaque",
-      date: "10/04/2025",
-      doctor: "Dr. Dubois",
-      file: "/documents/ordonnance_p2.pdf"
-    }
-  ],
-  "p3": [
-    {
-      id: "pre-3",
-      title: "Traitement diabète",
-      date: "05/04/2025",
-      doctor: "Dr. Leroy",
-      file: "/documents/ordonnance_p3.pdf"
-    }
-  ]
-};
+type PatientFormValues = z.infer<typeof patientFormSchema>;
 
 const PatientFile = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  // États
   const [activeTab, setActiveTab] = useState("info");
   const [isAddVisitDialogOpen, setIsAddVisitDialogOpen] = useState(false);
   const [isAddPrescriptionDialogOpen, setIsAddPrescriptionDialogOpen] = useState(false);
+  const [isEditingPatient, setIsEditingPatient] = useState(false);
+  const [isEditModeDialogOpen, setIsEditModeDialogOpen] = useState(false);
+  const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
+  const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [medicalNotes, setMedicalNotes] = useState("");
   
-  // Récupérer les infos du patient depuis l'id
-  const patient = id ? patientsMap[id] : null;
-  const vitalSigns = id && vitalSignsData[id] ? vitalSignsData[id] : [];
-  const visits = id && visitsData[id] ? visitsData[id] : [];
-  const prescriptions = id && prescriptionsData[id] ? prescriptionsData[id] : [];
+  // Recupérer les données du patient
+  useEffect(() => {
+    if (id) {
+      const patient = PatientService.getPatientInfo(id);
+      if (patient) {
+        setPatientInfo(patient);
+        setMedicalNotes(patient.medicalNotes || "");
+        setVitalSigns(PatientService.getVitalSigns(id));
+        setPrescriptions(PatientService.getPrescriptions(id));
+      }
+    }
+  }, [id]);
+
+  // Configuration du formulaire
+  const patientForm = useForm<PatientFormValues>({
+    resolver: zodResolver(patientFormSchema),
+    defaultValues: {
+      name: patientInfo?.name || "",
+      firstName: patientInfo?.firstName || "",
+      phone: patientInfo?.phoneNumber || "",
+      email: patientInfo?.email || "",
+      address: patientInfo?.address || "",
+      birthdate: patientInfo?.dateOfBirth || "",
+      insurance: patientInfo?.insurance || "",
+      doctor: patientInfo?.doctor || "",
+      notes: patientInfo?.medicalNotes || ""
+    },
+  });
+
+  // Mettre à jour les valeurs du formulaire lorsque les infos patient changent
+  useEffect(() => {
+    if (patientInfo) {
+      patientForm.reset({
+        name: patientInfo.name,
+        firstName: patientInfo.firstName || "",
+        phone: patientInfo.phoneNumber || "",
+        email: patientInfo.email || "",
+        address: patientInfo.address || "",
+        birthdate: patientInfo.dateOfBirth || "",
+        insurance: patientInfo.insurance || "",
+        doctor: patientInfo.doctor || "",
+        notes: patientInfo.medicalNotes || ""
+      });
+    }
+  }, [patientInfo]);
   
   const handleCallPatient = () => {
-    if (patient) {
-      window.location.href = `tel:${patient.phone.replace(/\s/g, '')}`;
-      toast.info(`Appel vers ${patient.name}`);
+    if (patientInfo?.phoneNumber) {
+      window.location.href = `tel:${patientInfo.phoneNumber.replace(/\s/g, '')}`;
+      toast.info(`Appel vers ${patientInfo.firstName} ${patientInfo.name}`);
     }
   };
   
   const handleNavigateToAddress = () => {
-    if (patient) {
-      const encodedAddress = encodeURIComponent(patient.address);
+    if (patientInfo?.address) {
+      const encodedAddress = encodeURIComponent(patientInfo.address);
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`, '_blank');
-      toast.info(`Navigation vers : ${patient.address}`);
+      toast.info(`Navigation vers : ${patientInfo.address}`);
     }
   };
   
   const handleGenerateReport = () => {
-    toast.success(`Génération du bilan pour ${patient?.name}`);
-    
-    setTimeout(() => {
-      toast.success("Bilan généré avec succès");
-    }, 1500);
+    if (patientInfo) {
+      toast.success(`Génération du bilan pour ${patientInfo.firstName} ${patientInfo.name}`);
+      
+      setTimeout(() => {
+        toast.success("Bilan généré avec succès");
+      }, 1500);
+    }
   };
   
   const handleAddAppointment = () => {
-    toast.success(`Rendez-vous ajouté pour ${patient?.name}`);
+    if (patientInfo) {
+      toast.success(`Rendez-vous ajouté pour ${patientInfo.firstName} ${patientInfo.name}`);
+    }
+  };
+  
+  const handleSavePatientInfo = (data: PatientFormValues) => {
+    if (id && patientInfo) {
+      // Mise à jour des informations patient (simulation)
+      const updatedPatient: PatientInfo = {
+        ...patientInfo,
+        name: data.name,
+        firstName: data.firstName,
+        phoneNumber: data.phone,
+        email: data.email,
+        address: data.address,
+        dateOfBirth: data.birthdate,
+        insurance: data.insurance,
+        doctor: data.doctor,
+        medicalNotes: data.notes
+      };
+      
+      setPatientInfo(updatedPatient);
+      setMedicalNotes(data.notes || "");
+      setIsEditingPatient(false);
+      toast.success("Informations patient mises à jour avec succès");
+    }
+  };
+  
+  const handleCancelEdit = () => {
+    setIsEditingPatient(false);
+    patientForm.reset({
+      name: patientInfo?.name || "",
+      firstName: patientInfo?.firstName || "",
+      phone: patientInfo?.phoneNumber || "",
+      email: patientInfo?.email || "",
+      address: patientInfo?.address || "",
+      birthdate: patientInfo?.dateOfBirth || "",
+      insurance: patientInfo?.insurance || "",
+      doctor: patientInfo?.doctor || ""
+    });
   };
   
   const handleAddVisit = (e: React.FormEvent) => {
@@ -249,16 +200,16 @@ const PatientFile = () => {
     setIsAddVisitDialogOpen(false);
   };
   
-  const handleMarkVisitComplete = (visit: Visit) => {
+  const handleMarkVisitComplete = (visit: any) => {
     toast.success(`Soin "${visit.care}" marqué comme terminé`);
     
     // Générer une feuille de soins
-    if (patient) {
-      DocumentService.generateCareSheet("care-" + Date.now(), patient.name);
+    if (patientInfo) {
+      DocumentService.generateCareSheet("care-" + Date.now(), `${patientInfo.firstName} ${patientInfo.name}`);
     }
   };
   
-  const handleMarkVisitCanceled = (visit: Visit) => {
+  const handleMarkVisitCanceled = (visit: any) => {
     toast.info(`Soin "${visit.care}" marqué comme annulé`);
   };
   
@@ -268,7 +219,7 @@ const PatientFile = () => {
     setIsAddPrescriptionDialogOpen(false);
   };
 
-  if (!patient) {
+  if (!patientInfo) {
     return (
       <div className="text-center py-10">
         <h2 className="text-xl font-semibold mb-2">Patient non trouvé</h2>
@@ -280,13 +231,15 @@ const PatientFile = () => {
     );
   }
 
+  const patientFullName = `${patientInfo.firstName || ""} ${patientInfo.name}`.trim();
+
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <User className="h-6 w-6 text-primary" />
-            {patient.name}
+            {patientFullName}
           </h1>
           <p className="text-sm text-muted-foreground">Dossier patient</p>
         </div>
@@ -298,6 +251,10 @@ const PatientFile = () => {
           <Button onClick={handleGenerateReport}>
             <FileText className="mr-2 h-4 w-4" />
             Générer bilan
+          </Button>
+          <Button variant="secondary" onClick={() => setIsEditModeDialogOpen(true)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Modifier
           </Button>
         </div>
       </div>
@@ -321,78 +278,189 @@ const PatientFile = () => {
         <TabsContent value="info" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Informations personnelles</CardTitle>
+              <CardTitle className="text-lg flex justify-between items-center">
+                <span>Informations personnelles</span>
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <div>
-                    <Label htmlFor="name">Nom complet</Label>
-                    <Input id="name" value={patient.name} readOnly />
+              <Form {...patientForm}>
+                <form onSubmit={patientForm.handleSubmit(handleSavePatientInfo)} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={patientForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nom</FormLabel>
+                          <FormControl>
+                            <Input {...field} readOnly={!isEditingPatient} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={patientForm.control}
+                      name="firstName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Prénom</FormLabel>
+                          <FormControl>
+                            <Input {...field} readOnly={!isEditingPatient} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={patientForm.control}
+                      name="birthdate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date de naissance</FormLabel>
+                          <FormControl>
+                            <Input {...field} readOnly={!isEditingPatient} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={patientForm.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Téléphone</FormLabel>
+                          <div className="flex items-center">
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditingPatient} />
+                            </FormControl>
+                            {!isEditingPatient && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="ml-2"
+                                onClick={handleCallPatient}
+                                type="button"
+                              >
+                                <Phone size={18} />
+                              </Button>
+                            )}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={patientForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input {...field} readOnly={!isEditingPatient} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={patientForm.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Adresse</FormLabel>
+                          <div className="flex items-center">
+                            <FormControl>
+                              <Input {...field} readOnly={!isEditingPatient} />
+                            </FormControl>
+                            {!isEditingPatient && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="ml-2" 
+                                onClick={handleNavigateToAddress}
+                                type="button"
+                              >
+                                <MapPin size={18} />
+                              </Button>
+                            )}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                  <div>
-                    <Label htmlFor="birthdate">Date de naissance</Label>
-                    <Input id="birthdate" value={patient.birthdate} readOnly />
+                  
+                  <Separator />
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={patientForm.control}
+                      name="insurance"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Assurance</FormLabel>
+                          <FormControl>
+                            <Input {...field} readOnly={!isEditingPatient} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={patientForm.control}
+                      name="doctor"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Médecin traitant</FormLabel>
+                          <FormControl>
+                            <Input {...field} readOnly={!isEditingPatient} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                  <div>
-                    <Label htmlFor="phone">Téléphone</Label>
-                    <div className="flex items-center">
-                      <Input id="phone" value={patient.phone} readOnly />
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="ml-2"
-                        onClick={handleCallPatient}
-                      >
-                        <Phone size={18} />
+                  
+                  <FormField
+                    control={patientForm.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notes médicales</FormLabel>
+                        <FormControl>
+                          <textarea
+                            {...field}
+                            className="w-full min-h-[100px] p-3 border rounded-md"
+                            placeholder="Ajouter des notes médicales importantes..."
+                            readOnly={!isEditingPatient}
+                          ></textarea>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {isEditingPatient && (
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" type="button" onClick={handleCancelEdit}>
+                        Annuler
+                      </Button>
+                      <Button type="submit">
+                        <Save className="mr-2 h-4 w-4" />
+                        Enregistrer
                       </Button>
                     </div>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" value={patient.email} readOnly />
-                  </div>
-                  <div>
-                    <Label htmlFor="address">Adresse</Label>
-                    <div className="flex items-center">
-                      <Input id="address" value={patient.address} readOnly />
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="ml-2" 
-                        onClick={handleNavigateToAddress}
-                      >
-                        <MapPin size={18} />
-                      </Button>
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="insurance">Assurance</Label>
-                    <Input id="insurance" value={patient.insurance} readOnly />
-                  </div>
-                </div>
-              </div>
-              <Separator />
-              <div className="space-y-3">
-                <div>
-                  <Label htmlFor="doctor">Médecin traitant</Label>
-                  <Input id="doctor" value={patient.doctor} readOnly />
-                </div>
-                <div>
-                  <Label htmlFor="notes">Notes importantes</Label>
-                  <textarea
-                    id="notes"
-                    className="w-full min-h-[100px] p-3 border rounded-md"
-                    placeholder="Ajouter des notes médicales importantes..."
-                  ></textarea>
-                </div>
-              </div>
-              <Button className="w-full">
-                <Save className="mr-2 h-4 w-4" />
-                Enregistrer les modifications
-              </Button>
+                  )}
+                </form>
+              </Form>
             </CardContent>
           </Card>
         </TabsContent>
@@ -646,6 +714,30 @@ const PatientFile = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {/* Modal de confirmation pour l'édition du patient */}
+      <Dialog open={isEditModeDialogOpen} onOpenChange={setIsEditModeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier les informations du patient</DialogTitle>
+            <DialogDescription>
+              Vous êtes sur le point de modifier les informations de {patientFullName}.
+              Êtes-vous sûr de vouloir continuer ?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex space-x-2 justify-end">
+            <Button variant="outline" onClick={() => setIsEditModeDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={() => {
+              setIsEditingPatient(true);
+              setIsEditModeDialogOpen(false);
+            }}>
+              Continuer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
