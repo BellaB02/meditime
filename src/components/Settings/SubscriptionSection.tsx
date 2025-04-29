@@ -1,10 +1,13 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckIcon, AlertCircle } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 type PlanType = "free" | "pro";
 
@@ -16,10 +19,50 @@ interface PlanDetails {
   current: boolean;
 }
 
+interface UserSubscription {
+  plan: PlanType;
+  nextBillingDate?: string; // format: YYYY-MM-DD
+  active: boolean;
+}
+
 export function SubscriptionSection() {
   const isMobile = useIsMobile();
-  
+  const { user } = useAuth();
   const [currentPlan, setCurrentPlan] = useState<PlanType>("free");
+  const [isLoading, setIsLoading] = useState(false);
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  
+  useEffect(() => {
+    if (user) {
+      fetchSubscriptionData();
+    }
+  }, [user]);
+
+  const fetchSubscriptionData = async () => {
+    setIsLoading(true);
+    
+    try {
+      // Here would be the call to fetch subscription data from your backend
+      // For now we'll simulate a response
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Default to free plan until we have a real subscription system
+      const mockSubscription: UserSubscription = {
+        plan: "free",
+        active: true
+      };
+      
+      setSubscription(mockSubscription);
+      setCurrentPlan(mockSubscription.plan);
+    } catch (error) {
+      console.error("Failed to fetch subscription:", error);
+      toast.error("Impossible de récupérer les informations d'abonnement");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   const plans: Record<PlanType, PlanDetails> = {
     free: {
@@ -52,9 +95,43 @@ export function SubscriptionSection() {
     },
   };
 
-  const handlePlanChange = (plan: PlanType) => {
-    // Logique pour changer d'abonnement (à implémenter avec Supabase)
-    setCurrentPlan(plan);
+  const handlePlanChange = async (plan: PlanType) => {
+    setIsLoading(true);
+    
+    try {
+      if (!user) {
+        toast.error("Vous devez être connecté pour changer d'abonnement");
+        return;
+      }
+      
+      if (plan === currentPlan) {
+        toast.info(`Vous êtes déjà sur le plan ${plans[plan].name}`);
+        return;
+      }
+      
+      // Simulate subscription change
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      if (plan === "pro") {
+        // Here you would redirect to a checkout page or process
+        toast.info("Redirection vers la page de paiement...");
+        
+        // For now just show a simulated success message
+        setTimeout(() => {
+          setCurrentPlan("pro");
+          toast.success("Abonnement mis à niveau avec succès !");
+        }, 2000);
+      } else {
+        // Downgrading to free plan
+        setCurrentPlan("free");
+        toast.success("Abonnement modifié avec succès");
+      }
+    } catch (error) {
+      console.error("Failed to change plan:", error);
+      toast.error("Impossible de changer d'abonnement");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -78,7 +155,7 @@ export function SubscriptionSection() {
                   </p>
                 ) : (
                   <p className="text-muted-foreground text-sm mt-1">
-                    Prochain prélèvement le 15/05/2025 - {plans[currentPlan].price}
+                    Prochain prélèvement le {subscription?.nextBillingDate || '15/05/2025'} - {plans[currentPlan].price}
                   </p>
                 )}
               </div>
@@ -112,11 +189,11 @@ export function SubscriptionSection() {
                   </ul>
                   <Button 
                     variant={plan.current ? "secondary" : "default"} 
-                    disabled={plan.current}
+                    disabled={plan.current || isLoading}
                     className="w-full mt-2"
                     onClick={() => handlePlanChange(key as PlanType)}
                   >
-                    {plan.current ? "Plan actuel" : plan.buttonText}
+                    {isLoading ? "Chargement..." : plan.current ? "Plan actuel" : plan.buttonText}
                   </Button>
                 </div>
               ))}

@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { DailyCareProgress } from "@/components/Dashboard/DailyCareProgress";
 import StatsCards from "@/components/Dashboard/StatsCards";
 import StatsModule from "@/components/Dashboard/StatsModule";
@@ -8,13 +8,41 @@ import { DailySummary } from "@/components/Dashboard/DailySummary";
 import AppointmentList, { Appointment } from "@/components/Dashboard/AppointmentList";
 import { CareSheetList } from "@/components/CareSheets/CareSheetList";
 import { Document } from "@/services/DocumentService";
+import { WelcomeGuide } from "@/components/Dashboard/WelcomeGuide";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
+import { createDemoData, isNewUser } from "@/utils/demoDataHelper";
 
 export default function Index() {
+  const { user } = useAuth();
+  const { profile } = useProfile();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isNewUserState, setIsNewUserState] = useState(false);
+  
+  // Check if user is new and create demo data if needed
+  useEffect(() => {
+    const checkNewUserAndCreateDemo = async () => {
+      if (!user) return;
+      
+      setIsLoading(true);
+      const userIsNew = await isNewUser();
+      
+      if (userIsNew) {
+        setIsNewUserState(true);
+        await createDemoData();
+      }
+      
+      setIsLoading(false);
+    };
+    
+    checkNewUserAndCreateDemo();
+  }, [user]);
+  
   // Simuler un profil d'utilisateur
   const userProfile = {
-    firstName: "Laura",
-    lastName: "Dubois",
-    role: "Infirmière libérale"
+    firstName: profile?.first_name || "Utilisateur",
+    lastName: profile?.last_name || "",
+    role: "Professionnel de santé"
   };
 
   // Simuler des rendez-vous
@@ -75,6 +103,9 @@ export default function Index() {
     <div className="space-y-6">
       {/* En-tête avec message de bienvenue */}
       <UserWelcome firstName={userProfile.firstName} role={userProfile.role} />
+      
+      {/* Guide de bienvenue pour les nouveaux utilisateurs */}
+      <WelcomeGuide />
       
       {/* Statistiques principales */}
       <StatsCards />

@@ -4,7 +4,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { 
+  BrowserRouter, 
+  Routes, 
+  Route, 
+  Navigate, 
+  useLocation,
+  Outlet
+} from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Patients from "./pages/Patients";
@@ -21,123 +28,109 @@ import CareSheets from "./pages/CareSheets";
 import Rounds from "./pages/Rounds";
 import Practice from "./pages/Practice";
 import Auth from "./pages/Auth";
-import PatientDashboard from "./pages/PatientDashboard";
-import CareProtocols from "./pages/CareProtocols";
-import CareProtocolEditor from "./pages/CareProtocolEditor";
 import PatientPortal from "./pages/PatientPortal";
-import PatientMessages from "./pages/PatientMessages";
-import Inventory from "./pages/Inventory";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
-// Transitions entre les pages
-import { AnimatePresence, motion } from "framer-motion";
-import "./styles/pageTransitions.css";
-import { AuthProvider } from "./contexts/AuthContext";
+// Create a new Query Client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 60000, // 1 minute
+    }
+  }
+});
 
-// Animations pour les pages
-const PageTransition = ({ children }: { children: React.ReactNode }) => {
+// Protected Route component
+const ProtectedRoute = () => {
+  const { user, isLoading } = useAuth();
   const location = useLocation();
-  
-  return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={location.pathname}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
-  );
-};
 
-// Composant de protection des routes
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const hasAuthentication = localStorage.getItem("sb-ttvuqgcgknkicggsnlke-auth-token") !== null;
-  
-  if (!hasAuthentication) {
-    return <Navigate to="/auth" replace />;
+  // Show nothing while checking authentication
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Chargement...</div>;
   }
-  
-  return <>{children}</>;
-};
 
-const PatientRoute = ({ children }: { children: React.ReactNode }) => {
-  const hasAuthentication = localStorage.getItem("sb-ttvuqgcgknkicggsnlke-auth-token") !== null;
-  
-  // Ici on pourrait ajouter une vérification supplémentaire pour le rôle "patient"
-  
-  if (!hasAuthentication) {
-    return <Navigate to="/auth" replace />;
+  // Redirect to login if not authenticated
+  if (!user) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
   }
-  
-  return <>{children}</>;
+
+  // If authenticated, render the child routes
+  return <Outlet />;
 };
 
-const queryClient = new QueryClient();
+// Admin only route
+const AdminRoute = () => {
+  const { user, isLoading } = useAuth();
+  const location = useLocation();
 
-const App = () => {
+  // Show nothing while checking authentication
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Chargement...</div>;
+  }
+
+  // Add admin check here once admin roles are implemented
+  // For now, just check if user is logged in
+  if (!user) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  return <Outlet />;
+};
+
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <NotificationProvider>
-          <PracticeProvider>
-            <AuthProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <SidebarProvider>
+      <BrowserRouter>
+        <TooltipProvider>
+          <AuthProvider>
+            <NotificationProvider>
+              <SidebarProvider>
+                <PracticeProvider>
                   <Routes>
+                    {/* Public routes */}
                     <Route path="/auth" element={<Auth />} />
                     
-                    {/* Routes patient */}
-                    <Route path="/patient-dashboard" element={
-                      <PatientRoute>
-                        <PatientDashboard />
-                      </PatientRoute>
-                    } />
-                    <Route path="/patient-portal" element={
-                      <PatientRoute>
-                        <PatientPortal />
-                      </PatientRoute>
-                    } />
-                    <Route path="/patient-messages" element={
-                      <PatientRoute>
-                        <PatientMessages />
-                      </PatientRoute>
-                    } />
-                    
-                    {/* Routes soignant */}
-                    <Route element={
-                      <ProtectedRoute>
-                        <Layout />
-                      </ProtectedRoute>
-                    }>
-                      <Route index element={<Index />} />
-                      <Route path="/patients" element={<Patients />} />
-                      <Route path="/patients/:id" element={<PatientFile />} />
-                      <Route path="/calendar" element={<Calendar />} />
-                      <Route path="/admin" element={<AdminTasks />} />
-                      <Route path="/admin/billing" element={<BillingPage />} />
-                      <Route path="/settings" element={<Settings />} />
-                      <Route path="/caresheets" element={<CareSheets />} />
-                      <Route path="/rounds" element={<Rounds />} />
-                      <Route path="/practice" element={<Practice />} />
-                      <Route path="/care-protocols" element={<CareProtocols />} />
-                      <Route path="/care-protocols/:protocolId" element={<CareProtocolEditor />} />
-                      <Route path="/inventory" element={<Inventory />} />
-                      <Route path="*" element={<NotFound />} />
+                    {/* Protected routes */}
+                    <Route element={<ProtectedRoute />}>
+                      <Route element={<Layout />}>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/patients" element={<Patients />} />
+                        <Route path="/patients/:patientId" element={<PatientFile />} />
+                        <Route path="/calendar" element={<Calendar />} />
+                        <Route path="/care-sheets" element={<CareSheets />} />
+                        <Route path="/rounds" element={<Rounds />} />
+                        <Route path="/billing" element={<BillingPage />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="/practice" element={<Practice />} />
+                      </Route>
                     </Route>
+                    
+                    {/* Admin routes */}
+                    <Route element={<AdminRoute />}>
+                      <Route element={<Layout />}>
+                        <Route path="/admin" element={<AdminTasks />} />
+                      </Route>
+                    </Route>
+                    
+                    {/* Patient portal route - will need its own authentication in the future */}
+                    <Route path="/patient-portal" element={<PatientPortal />} />
+                    
+                    {/* Catch-all route */}
+                    <Route path="*" element={<NotFound />} />
                   </Routes>
-                </SidebarProvider>
-              </BrowserRouter>
-            </AuthProvider>
-          </PracticeProvider>
-        </NotificationProvider>
-      </TooltipProvider>
+                </PracticeProvider>
+              </SidebarProvider>
+            </NotificationProvider>
+            <Toaster />
+            <Sonner position="top-right" />
+          </AuthProvider>
+        </TooltipProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
-};
+}
 
 export default App;
