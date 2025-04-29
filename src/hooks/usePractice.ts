@@ -8,6 +8,7 @@ interface Member {
   email: string;
   phone: string;
   avatar?: string;
+  bio?: string; // Add bio property as optional
 }
 
 interface Practice {
@@ -34,7 +35,8 @@ export const usePractice = () => {
       role: "admin",
       email: "thomas.dubois@cabinet-infirmier.fr",
       phone: "06 12 34 56 78",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Thomas"
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Thomas",
+      bio: "Infirmier depuis 10 ans, spécialisé en soins à domicile."
     },
     {
       id: "member-2",
@@ -42,7 +44,8 @@ export const usePractice = () => {
       role: "nurse",
       email: "sophie.laurent@cabinet-infirmier.fr",
       phone: "06 23 45 67 89",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie"
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie",
+      bio: "Infirmière spécialisée en gériatrie avec 5 ans d'expérience."
     },
     {
       id: "member-3",
@@ -50,7 +53,8 @@ export const usePractice = () => {
       role: "secretary",
       email: "marc.petit@cabinet-infirmier.fr",
       phone: "06 34 56 78 90",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Marc"
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Marc",
+      bio: "Secrétaire médical avec 3 ans d'expérience dans le secteur de la santé."
     }
   ]);
 

@@ -8,6 +8,7 @@ interface Member {
   avatar?: string;
   email: string;
   phone: string;
+  bio?: string; // Add bio property as optional
 }
 
 interface Practice {
@@ -47,7 +48,8 @@ const dummyPractice: Practice = {
       role: "admin",
       avatar: "https://i.pravatar.cc/150?img=44",
       email: "marie.dupont@cabinet-infirmier.fr",
-      phone: "06 12 34 56 78"
+      phone: "06 12 34 56 78",
+      bio: "Infirmière coordinatrice avec 15 ans d'expérience"
     },
     {
       id: "member-2",
@@ -55,7 +57,8 @@ const dummyPractice: Practice = {
       role: "nurse",
       avatar: "https://i.pravatar.cc/150?img=67",
       email: "jean.martin@cabinet-infirmier.fr",
-      phone: "06 23 45 67 89"
+      phone: "06 23 45 67 89",
+      bio: "Infirmier DE spécialisé en soins palliatifs"
     },
     {
       id: "member-3",
@@ -63,7 +66,8 @@ const dummyPractice: Practice = {
       role: "secretary",
       avatar: "https://i.pravatar.cc/150?img=47",
       email: "sophie.bernard@cabinet-infirmier.fr",
-      phone: "06 34 56 78 90"
+      phone: "06 34 56 78 90",
+      bio: "Secrétaire médicale expérimentée"
     }
   ]
 };

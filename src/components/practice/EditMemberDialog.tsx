@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { TemporaryAccessService } from "@/services/TemporaryAccessService";
 
@@ -15,6 +16,7 @@ interface Member {
   email: string;
   phone: string;
   avatar?: string;
+  bio?: string; // Add bio property as optional
 }
 
 interface EditMemberDialogProps {
@@ -29,7 +31,8 @@ export const EditMemberDialog = ({ isOpen, onClose, onSave, member }: EditMember
     name: member?.name || "",
     role: member?.role || "nurse",
     email: member?.email || "",
-    phone: member?.phone || ""
+    phone: member?.phone || "",
+    bio: member?.bio || "" // Add bio to form data
   });
   const [isSending, setIsSending] = useState(false);
 
@@ -70,7 +73,8 @@ export const EditMemberDialog = ({ isOpen, onClose, onSave, member }: EditMember
         name: formData.name,
         role: formData.role,
         email: formData.email,
-        phone: formData.phone
+        phone: formData.phone,
+        bio: formData.bio // Include bio in the update
       });
       setIsSending(false);
       onClose();
@@ -82,6 +86,7 @@ export const EditMemberDialog = ({ isOpen, onClose, onSave, member }: EditMember
         role: formData.role,
         email: formData.email,
         phone: formData.phone,
+        bio: formData.bio, // Include bio for new members
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.name.split(' ')[0]}`
       };
       
@@ -159,6 +164,17 @@ export const EditMemberDialog = ({ isOpen, onClose, onSave, member }: EditMember
               onChange={(e) => handleChange("phone", e.target.value)}
               placeholder="Ex: 06 12 34 56 78"
               required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="bio">Biographie</Label>
+            <Textarea
+              id="bio"
+              value={formData.bio}
+              onChange={(e) => handleChange("bio", e.target.value)}
+              placeholder="Quelques informations sur le membre..."
+              rows={3}
             />
           </div>
           
