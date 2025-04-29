@@ -87,9 +87,11 @@ export const DocumentService = {
     // Pour la simulation, nous affichons simplement un message pour indiquer quelles informations seraient incluses
     
     let infoMessage = "Téléchargement du document";
+    let patientInfo: any = null;
     
     if (patientId) {
-      const patientInfo = getPatientInfo(patientId);
+      patientInfo = getPatientInfo(patientId);
+      
       if (patientInfo) {
         infoMessage = `Document pré-rempli pour ${patientInfo.name}`;
         
@@ -100,7 +102,17 @@ export const DocumentService = {
           date: formatDate()
         });
 
-        toast.info(`Feuille de soins pré-remplie avec les données de ${patientInfo.name}`);
+        // Notification explicite des informations pré-remplies
+        toast.info(`Feuille de soins pré-remplie avec les données suivantes:`, {
+          description: `
+            Patient: ${patientInfo.name}
+            Adresse: ${patientInfo.address}
+            Numéro SS: ${patientInfo.socialSecurityNumber}
+            Type de soin: ${careInfo?.type || 'Non spécifié'}
+            Date: ${careInfo?.date || formatDate()}
+          `,
+          duration: 5000
+        });
       }
     }
     
@@ -113,7 +125,13 @@ export const DocumentService = {
     document.body.removeChild(link);
     
     toast.success("Téléchargement démarré");
-    return true;
+
+    // Si dans une application réelle, on voudrait retourner toutes les infos utilisées pour pré-remplir
+    return {
+      success: true, 
+      patientInfo,
+      careInfo
+    };
   },
   
   printDocument: (documentKey: string, patientId?: string, careInfo?: any) => {
@@ -121,7 +139,16 @@ export const DocumentService = {
     if (patientId) {
       const patientInfo = getPatientInfo(patientId);
       if (patientInfo) {
-        toast.info(`Impression du document pré-rempli pour ${patientInfo.name}`);
+        // Notification détaillée des informations utilisées
+        toast.info(`Document pré-rempli pour impression avec les données de ${patientInfo.name}`, {
+          description: `
+            Adresse: ${patientInfo.address}
+            Numéro SS: ${patientInfo.socialSecurityNumber}
+            Type de soin: ${careInfo?.type || 'Non spécifié'}
+            Date: ${careInfo?.date || formatDate()}
+          `,
+          duration: 5000
+        });
       }
     }
     
@@ -136,7 +163,15 @@ export const DocumentService = {
     // Récupérer les informations du patient si l'ID est fourni
     const patientInfo = patientId ? getPatientInfo(patientId) : undefined;
     
-    toast.success(`Feuille de soins générée pour ${patientName}`);
+    // Notification plus détaillée des informations utilisées pour la feuille de soins
+    if (patientInfo) {
+      toast.success(`Feuille de soins générée pour ${patientName}`, {
+        description: `Avec informations complètes: adresse, n° sécurité sociale, etc.`,
+        duration: 4000
+      });
+    } else {
+      toast.success(`Feuille de soins générée pour ${patientName}`);
+    }
     
     return {
       id: `CS-${Date.now().toString(36)}`,

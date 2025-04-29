@@ -121,7 +121,7 @@ const Calendar = () => {
     // Trouver le rendez-vous pour obtenir les informations du patient
     const appointment = appointments.find(app => app.id === appointmentId);
     if (appointment) {
-      // Générer une feuille de soins
+      // Générer une feuille de soins avec toutes les informations du patient
       const careSheet = DocumentService.generateCareSheet(
         appointmentId, 
         appointment.patient.name,
@@ -133,19 +133,24 @@ const Calendar = () => {
     }
   }, [appointments]);
   
-  // Fonction pour télécharger la feuille de soins
+  // Fonction pour télécharger la feuille de soins pré-remplie
   const handleDownloadCareSheet = (appointmentId: string) => {
     const appointment = appointments.find(app => app.id === appointmentId);
     if (appointment) {
+      // Passer toutes les informations disponibles pour pré-remplir la feuille de soins
       DocumentService.downloadDocument(
         "feuille_de_soins", 
         appointment.patient.id,
         {
           type: appointment.patient.care,
           date: appointment.date.toLocaleDateString("fr-FR"),
-          time: appointment.time
+          time: appointment.time,
+          patientName: appointment.patient.name,
+          patientAddress: appointment.patient.address
         }
       );
+      
+      toast.success(`Feuille de soins pré-remplie téléchargée pour ${appointment.patient.name}`);
     }
   };
 

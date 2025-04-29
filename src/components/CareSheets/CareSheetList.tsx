@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Document, DocumentService } from "@/services/DocumentService";
 import { Search, Calendar, Download, Printer, FileText } from "lucide-react";
+import { toast } from "sonner";
 
 interface CareSheetListProps {
   careSheets: Document[];
@@ -23,11 +24,25 @@ export const CareSheetList = ({ careSheets }: CareSheetListProps) => {
   });
   
   const handleDownload = (sheet: Document) => {
-    DocumentService.downloadDocument("feuille_de_soins");
+    // Passer toutes les informations disponibles pour pré-remplir la feuille de soins
+    DocumentService.downloadDocument(
+      "feuille_de_soins", 
+      sheet.patientId,
+      sheet.careInfo
+    );
+    
+    toast.success(`Téléchargement de la feuille de soins pré-remplie pour ${sheet.patientName}`);
   };
   
   const handlePrint = (sheet: Document) => {
-    DocumentService.printDocument("feuille_de_soins");
+    // Passer toutes les informations disponibles pour pré-remplir la feuille de soins
+    DocumentService.printDocument(
+      "feuille_de_soins", 
+      sheet.patientId,
+      sheet.careInfo
+    );
+    
+    toast.success(`Impression de la feuille de soins pré-remplie pour ${sheet.patientName}`);
   };
 
   return (

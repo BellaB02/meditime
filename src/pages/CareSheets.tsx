@@ -112,28 +112,40 @@ export default function CareSheets() {
   });
   
   const handleDownload = (sheet: Document) => {
+    // Passer toutes les informations du patient et du soin pour pré-remplir la feuille
     DocumentService.downloadDocument(
       "feuille_de_soins", 
       sheet.patientId, 
       sheet.careInfo
     );
-    toast.success(`Téléchargement de la feuille de soins pour ${sheet.patientName}`);
+    
+    // Notification plus explicite du pré-remplissage
+    if (sheet.patientInfo) {
+      toast.success(`Téléchargement de la feuille de soins pré-remplie pour ${sheet.patientName}`, {
+        description: `Avec informations complètes: adresse, n° sécurité sociale, etc.`
+      });
+    } else {
+      toast.success(`Téléchargement de la feuille de soins pour ${sheet.patientName}`);
+    }
   };
   
   const handlePrint = (sheet: Document) => {
+    // Passer toutes les informations disponibles pour pré-remplir la feuille avant impression
     DocumentService.printDocument(
       "feuille_de_soins", 
       sheet.patientId, 
       sheet.careInfo
     );
-    toast.success(`Impression de la feuille de soins pour ${sheet.patientName}`);
+    
+    toast.success(`Impression de la feuille de soins pré-remplie pour ${sheet.patientName}`);
   };
   
   const handleCreateNewSheet = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Dans une vraie application, cela créerait une vraie feuille de soins
-    toast.success("Nouvelle feuille de soins créée");
+    // avec toutes les informations patient
+    toast.success("Nouvelle feuille de soins créée avec les données du patient");
     setIsNewSheetDialogOpen(false);
   };
 
