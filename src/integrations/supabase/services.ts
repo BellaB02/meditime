@@ -7,6 +7,15 @@ type NursingAct = Database["public"]["Tables"]["nursing_acts"]["Row"];
 type MajorationAct = Database["public"]["Tables"]["majorations"]["Row"];
 type AppSettings = Database["public"]["Tables"]["app_settings"]["Row"];
 
+// Interface pour le profil utilisateur (car non inclus dans les types générés)
+interface Profile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  role: string | null;
+  updated_at: string | null;
+}
+
 // Service Supabase pour interagir avec l'API
 export const supabaseService = {
   
@@ -185,34 +194,32 @@ export const supabaseService = {
     return true;
   },
   
-  // Profiles
+  // Profiles - Utilisation des fonctions RPC au lieu d'accès direct à la table
   getProfile: async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    const { data, error } = await supabase.rpc('get_profile', {
+      user_id: userId
+    });
       
     if (error) {
       console.error(`Error fetching profile for user ${userId}:`, error);
       throw error;
     }
     
-    return data;
+    return data as Profile;
   },
   
   updateProfile: async (userId: string, profile: { first_name?: string, last_name?: string }) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(profile)
-      .eq('id', userId)
-      .select();
+    const { error } = await supabase.rpc('update_user_profile', {
+      user_id: userId,
+      profile_data: profile
+    });
       
     if (error) {
       console.error(`Error updating profile for user ${userId}:`, error);
       throw error;
     }
     
-    return data[0];
+    // Récupérer le profil mis à jour
+    return await supabaseService.getProfile(userId);
   }
 };

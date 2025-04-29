@@ -112,7 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     
     try {
-      // Utilisation de rpc au lieu d'accès direct à la table profiles
+      // Utilisation de la fonction RPC update_user_profile
       const { error } = await supabase.rpc('update_user_profile', {
         user_id: user.id,
         profile_data: {

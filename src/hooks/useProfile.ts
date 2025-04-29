@@ -28,7 +28,7 @@ export function useProfile() {
       try {
         setLoading(true);
         
-        // Utilisation de la méthode rpc pour contourner les limitations de typage
+        // Utilisation de la fonction RPC get_profile
         const { data, error } = await supabase.rpc('get_profile', {
           user_id: user.id
         });
@@ -56,7 +56,7 @@ export function useProfile() {
     if (!user) return;
 
     try {
-      // Utilisation de la méthode rpc pour contourner les limitations de typage
+      // Utilisation de la fonction RPC update_user_profile
       const { error } = await supabase.rpc('update_user_profile', {
         user_id: user.id,
         profile_data: updates
@@ -66,7 +66,7 @@ export function useProfile() {
         throw error;
       }
 
-      // Récupérer le profil mis à jour
+      // Récupérer le profil mis à jour avec la fonction RPC
       const { data, error: fetchError } = await supabase.rpc('get_profile', {
         user_id: user.id
       });
