@@ -5,7 +5,7 @@ import { Download, FileText, PlusCircle, Scan } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { OCRResult } from "@/services/OCRService";
-import PrescriptionScanner from "./PrescriptionScanner";
+import PrescriptionScanner from "./prescription-scanner/PrescriptionScanner";
 
 interface Prescription {
   id: string;
