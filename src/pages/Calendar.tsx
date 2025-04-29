@@ -1,16 +1,19 @@
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, MapPin, User, Plus, Calendar as CalendarIcon } from "lucide-react";
+import { Clock, MapPin, User, Plus, Calendar as CalendarIcon, CheckCircle, Download } from "lucide-react";
+import { toast } from "sonner";
+import { DocumentService } from "@/services/DocumentService";
 
 // Types
 interface Appointment {
   id: string;
   date: Date;
   time: string;
+  completed?: boolean;
   patient: {
     id: string;
     name: string;
@@ -81,9 +84,10 @@ const appointmentsData: Appointment[] = [
 const Calendar = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [view, setView] = useState<"calendar" | "list">("calendar");
+  const [appointments, setAppointments] = useState<Appointment[]>(appointmentsData);
   
   // Filtrer les rendez-vous pour la date sélectionnée
-  const filteredAppointments = date ? appointmentsData.filter(appointment => 
+  const filteredAppointments = date ? appointments.filter(appointment => 
     appointment.date.toDateString() === date.toDateString()
   ) : [];
   
@@ -102,6 +106,47 @@ const Calendar = () => {
       month: 'long',
       year: 'numeric'
     }).format(date);
+  };
+
+  // Fonction pour marquer un rendez-vous comme terminé
+  const handleMarkAsCompleted = useCallback((appointmentId: string) => {
+    setAppointments(prev => 
+      prev.map(appointment => 
+        appointment.id === appointmentId 
+          ? { ...appointment, completed: true } 
+          : appointment
+      )
+    );
+    
+    // Trouver le rendez-vous pour obtenir les informations du patient
+    const appointment = appointments.find(app => app.id === appointmentId);
+    if (appointment) {
+      // Générer une feuille de soins
+      const careSheet = DocumentService.generateCareSheet(
+        appointmentId, 
+        appointment.patient.name,
+        appointment.patient.id
+      );
+      
+      toast.success(`Rendez-vous marqué comme terminé`);
+      toast.success(`Feuille de soins générée pour ${appointment.patient.name}`);
+    }
+  }, [appointments]);
+  
+  // Fonction pour télécharger la feuille de soins
+  const handleDownloadCareSheet = (appointmentId: string) => {
+    const appointment = appointments.find(app => app.id === appointmentId);
+    if (appointment) {
+      DocumentService.downloadDocument(
+        "feuille_de_soins", 
+        appointment.patient.id,
+        {
+          type: appointment.patient.care,
+          date: appointment.date.toLocaleDateString("fr-FR"),
+          time: appointment.time
+        }
+      );
+    }
   };
 
   return (
@@ -155,18 +200,31 @@ const Calendar = () => {
                   {sortedAppointments.map(appointment => (
                     <div 
                       key={appointment.id} 
-                      className="border rounded-md p-4 card-hover"
+                      className={`border rounded-md p-4 ${appointment.completed ? "bg-green-50 border-green-200" : "card-hover"}`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-primary" />
+                          {appointment.completed ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-primary" />
+                          )}
                           <span className="font-semibold">{appointment.time}</span>
+                          {appointment.completed && <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">Terminé</span>}
                         </div>
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={`/patients/${appointment.patient.id}`}>
-                            Voir fiche
-                          </a>
-                        </Button>
+                        <div className="flex gap-2">
+                          {appointment.completed && (
+                            <Button variant="outline" size="sm" onClick={() => handleDownloadCareSheet(appointment.id)}>
+                              <Download size={14} className="mr-1" />
+                              Feuille de soins
+                            </Button>
+                          )}
+                          <Button variant="outline" size="sm" asChild>
+                            <a href={`/patients/${appointment.patient.id}`}>
+                              Voir fiche
+                            </a>
+                          </Button>
+                        </div>
                       </div>
 
                       <div className="space-y-2">
@@ -182,6 +240,18 @@ const Calendar = () => {
                           {appointment.patient.care}
                         </div>
                       </div>
+                      
+                      {!appointment.completed && (
+                        <div className="mt-4">
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleMarkAsCompleted(appointment.id)}
+                          >
+                            <CheckCircle size={14} className="mr-1" />
+                            Marquer comme terminé
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

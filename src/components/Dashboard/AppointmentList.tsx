@@ -1,7 +1,10 @@
 
 import { Card } from "@/components/ui/card";
-import { Clock, User, MapPin } from "lucide-react";
+import { Clock, User, MapPin, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { toast } from "sonner";
+import { DocumentService } from "@/services/DocumentService";
 
 // Types pour les rendez-vous
 interface Appointment {
@@ -12,15 +15,42 @@ interface Appointment {
     name: string;
     address: string;
     care: string;
-  }
+  };
+  completed?: boolean;
 }
 
 interface AppointmentListProps {
   title: string;
   appointments: Appointment[];
+  onAppointmentComplete?: (appointmentId: string) => void;
 }
 
-const AppointmentList = ({ title, appointments = [] }: AppointmentListProps) => {
+const AppointmentList = ({ title, appointments = [], onAppointmentComplete }: AppointmentListProps) => {
+  const [completedAppointments, setCompletedAppointments] = useState<string[]>([]);
+
+  const handleMarkAsCompleted = (appointmentId: string) => {
+    setCompletedAppointments((prev) => [...prev, appointmentId]);
+    
+    // Si une fonction de rappel est fournie, on l'appelle
+    if (onAppointmentComplete) {
+      onAppointmentComplete(appointmentId);
+    }
+    
+    // Générer une feuille de soins
+    const appointment = appointments.find(app => app.id === appointmentId);
+    if (appointment) {
+      DocumentService.generateCareSheet(appointmentId, appointment.patient.name);
+      toast.success(`Soin marqué comme terminé pour ${appointment.patient.name}`);
+      toast.success("Feuille de soins générée avec succès");
+    }
+  };
+
+  // Vérifier si un rendez-vous est marqué comme terminé
+  const isAppointmentCompleted = (appointmentId: string) => {
+    return completedAppointments.includes(appointmentId) || 
+           appointments.find(app => app.id === appointmentId)?.completed;
+  };
+
   return (
     <Card className="p-4">
       <h2 className="text-lg font-semibold mb-4">{title}</h2>
@@ -29,11 +59,13 @@ const AppointmentList = ({ title, appointments = [] }: AppointmentListProps) => 
           appointments.map((appointment) => (
             <div 
               key={appointment.id} 
-              className="p-3 border rounded-md card-hover flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              className={`p-3 border rounded-md card-hover flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                isAppointmentCompleted(appointment.id) ? "bg-green-50 border-green-200" : ""
+              }`}
             >
               <div className="flex items-center gap-3">
-                <div className="bg-primary/10 text-primary p-2 rounded-full">
-                  <Clock size={20} />
+                <div className={`p-2 rounded-full ${isAppointmentCompleted(appointment.id) ? "bg-green-100 text-green-600" : "bg-primary/10 text-primary"}`}>
+                  {isAppointmentCompleted(appointment.id) ? <CheckCircle size={20} /> : <Clock size={20} />}
                 </div>
                 <div>
                   <p className="font-medium">{appointment.time}</p>
@@ -54,15 +86,37 @@ const AppointmentList = ({ title, appointments = [] }: AppointmentListProps) => 
                 </div>
               </div>
 
-              <Button 
-                variant="outline" 
-                size="sm"
-                asChild
-              >
-                <a href={`/patients/${appointment.patient.id}`}>
-                  Voir fiche
-                </a>
-              </Button>
+              <div className="flex items-center gap-2">
+                {!isAppointmentCompleted(appointment.id) ? (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleMarkAsCompleted(appointment.id)}
+                  >
+                    Marquer terminé
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="bg-green-50 text-green-600 border-green-200"
+                    disabled
+                  >
+                    <CheckCircle size={16} className="mr-1" />
+                    Terminé
+                  </Button>
+                )}
+                
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  asChild
+                >
+                  <a href={`/patients/${appointment.patient.id}`}>
+                    Voir fiche
+                  </a>
+                </Button>
+              </div>
             </div>
           ))
         ) : (

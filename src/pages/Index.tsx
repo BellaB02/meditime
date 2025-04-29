@@ -1,13 +1,15 @@
 
+import { useState } from "react";
 import StatsCards from "@/components/Dashboard/StatsCards";
 import AppointmentList from "@/components/Dashboard/AppointmentList";
 import { DailyCareProgress } from "@/components/Dashboard/DailyCareProgress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Calendar, Users } from "lucide-react";
+import { toast } from "sonner";
 
 export default function Index() {
   // Sample data for appointments
-  const todayAppointments = [
+  const [todayAppointments, setTodayAppointments] = useState([
     {
       id: "1",
       time: "10:00",
@@ -16,7 +18,8 @@ export default function Index() {
         name: "Jean Dupont",
         address: "15 Rue de Paris, 75001 Paris",
         care: "Pansement"
-      }
+      },
+      completed: false
     },
     {
       id: "2",
@@ -26,9 +29,27 @@ export default function Index() {
         name: "Marie Martin",
         address: "8 Avenue Victor Hugo, 75016 Paris",
         care: "Injection insuline"
-      }
+      },
+      completed: false
     }
-  ];
+  ]);
+
+  // Compter les soins terminés
+  const completedAppointments = todayAppointments.filter(app => app.completed).length;
+  const totalAppointments = todayAppointments.length;
+
+  // Gérer la complétion d'un rendez-vous
+  const handleAppointmentComplete = (appointmentId: string) => {
+    setTodayAppointments(prev => 
+      prev.map(appointment => 
+        appointment.id === appointmentId 
+          ? { ...appointment, completed: true } 
+          : appointment
+      )
+    );
+    
+    toast.success("Soin marqué comme terminé");
+  };
 
   return (
     <div className="space-y-6">
@@ -39,10 +60,11 @@ export default function Index() {
           <AppointmentList 
             title="Rendez-vous du jour" 
             appointments={todayAppointments} 
+            onAppointmentComplete={handleAppointmentComplete}
           />
         </div>
         <div className="space-y-6">
-          <DailyCareProgress completed={3} total={7} />
+          <DailyCareProgress completed={completedAppointments} total={totalAppointments} />
           
           <Card>
             <CardHeader className="pb-2">
