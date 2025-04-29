@@ -116,13 +116,14 @@ export default function CareSheets() {
     DocumentService.downloadDocument(
       "feuille_de_soins", 
       sheet.patientId, 
-      sheet.careInfo
+      sheet.careInfo,
+      true // Flag pour indiquer que nous voulons une feuille pré-remplie
     );
     
     // Notification plus explicite du pré-remplissage
     if (sheet.patientInfo) {
       toast.success(`Téléchargement de la feuille de soins pré-remplie pour ${sheet.patientName}`, {
-        description: `Avec informations complètes: adresse, n° sécurité sociale, etc.`
+        description: `Avec toutes les informations patient intégrées dans le PDF`
       });
     } else {
       toast.success(`Téléchargement de la feuille de soins pour ${sheet.patientName}`);
@@ -134,7 +135,8 @@ export default function CareSheets() {
     DocumentService.printDocument(
       "feuille_de_soins", 
       sheet.patientId, 
-      sheet.careInfo
+      sheet.careInfo,
+      true // Flag pour indiquer que nous voulons une feuille pré-remplie
     );
     
     toast.success(`Impression de la feuille de soins pré-remplie pour ${sheet.patientName}`);

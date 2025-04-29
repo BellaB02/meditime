@@ -1,5 +1,8 @@
 
 import { toast } from "sonner";
+import { jsPDF } from "jspdf";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 export type DocumentType = 
   | "invoice" 
@@ -41,7 +44,7 @@ const documents: Record<string, string> = {
 // Fonction d'aide pour formater la date actuelle
 const formatDate = () => {
   const now = new Date();
-  return now.toLocaleDateString("fr-FR");
+  return format(now, "dd/MM/yyyy", { locale: fr });
 };
 
 // Fonction pour obtenir les informations du patient (simulation)
@@ -74,8 +77,83 @@ const getPatientInfo = (patientId?: string) => {
   return patientId && patientsData[patientId] ? patientsData[patientId] : undefined;
 };
 
+// Fonction pour générer un PDF pré-rempli
+const generatePrefilledPDF = (patientId?: string, careInfo?: any) => {
+  try {
+    const patientInfo = patientId ? getPatientInfo(patientId) : undefined;
+    
+    if (!patientInfo) {
+      toast.error("Informations patient non trouvées");
+      return null;
+    }
+    
+    // Créer un nouveau document PDF
+    const doc = new jsPDF();
+    
+    // En-tête
+    doc.setFontSize(18);
+    doc.text("FEUILLE DE SOINS", 105, 15, { align: "center" });
+    
+    // Informations patient
+    doc.setFontSize(12);
+    doc.text("INFORMATIONS PATIENT", 15, 30);
+    doc.setFontSize(10);
+    doc.text(`Nom et Prénom: ${patientInfo.name}`, 15, 40);
+    doc.text(`Adresse: ${patientInfo.address || "Non renseignée"}`, 15, 47);
+    doc.text(`N° Sécurité Sociale: ${patientInfo.socialSecurityNumber || "Non renseigné"}`, 15, 54);
+    doc.text(`Date de naissance: ${patientInfo.dateOfBirth || "Non renseignée"}`, 15, 61);
+    doc.text(`Téléphone: ${patientInfo.phoneNumber || "Non renseigné"}`, 15, 68);
+    
+    // Informations du soin
+    doc.setFontSize(12);
+    doc.text("INFORMATIONS DU SOIN", 15, 85);
+    doc.setFontSize(10);
+    doc.text(`Type de soin: ${careInfo?.type || "Non renseigné"}`, 15, 95);
+    doc.text(`Code NGAP: ${careInfo?.code || "Non renseigné"}`, 15, 102);
+    doc.text(`Date: ${careInfo?.date || formatDate()}`, 15, 109);
+    doc.text(`Heure: ${careInfo?.time || format(new Date(), "HH:mm")}`, 15, 116);
+    doc.text(`Description: ${careInfo?.description || "Non renseignée"}`, 15, 123);
+    
+    // Signature
+    doc.setFontSize(12);
+    doc.text("SIGNATURE DU PRATICIEN", 15, 150);
+    doc.line(15, 165, 80, 165);
+    
+    return doc;
+  } catch (error) {
+    console.error("Erreur lors de la génération du PDF:", error);
+    toast.error("Erreur lors de la génération du PDF");
+    return null;
+  }
+};
+
 export const DocumentService = {
-  downloadDocument: (documentKey: string, patientId?: string, careInfo?: any) => {
+  downloadDocument: (documentKey: string, patientId?: string, careInfo?: any, preFilled: boolean = false) => {
+    // Si preFilled est true, générer un PDF pré-rempli personnalisé
+    if (preFilled && patientId) {
+      const doc = generatePrefilledPDF(patientId, careInfo);
+      
+      if (doc) {
+        // Télécharger le PDF généré
+        const fileName = `feuille_de_soins_${patientId}_${formatDate().replace(/\//g, '-')}.pdf`;
+        doc.save(fileName);
+        
+        const patientInfo = getPatientInfo(patientId);
+        
+        if (patientInfo) {
+          // Notification détaillée
+          toast.success(`Feuille de soins générée et téléchargée pour ${patientInfo.name}`, {
+            description: `Le document a été pré-rempli avec toutes les informations patient et soins`,
+            duration: 5000
+          });
+        }
+        
+        return true;
+      }
+      return false;
+    }
+    
+    // Comportement par défaut pour les documents non personnalisés
     const documentUrl = documents[documentKey];
     
     if (!documentUrl) {
@@ -134,8 +212,38 @@ export const DocumentService = {
     };
   },
   
-  printDocument: (documentKey: string, patientId?: string, careInfo?: any) => {
-    // Dans une vraie application, cela générerait un PDF dynamique avant l'impression
+  printDocument: (documentKey: string, patientId?: string, careInfo?: any, preFilled: boolean = false) => {
+    // Si preFilled est true, générer un PDF pré-rempli pour impression
+    if (preFilled && patientId) {
+      const doc = generatePrefilledPDF(patientId, careInfo);
+      
+      if (doc) {
+        // Ouvrir le PDF dans une nouvelle fenêtre pour impression
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        const printWindow = window.open(url, '_blank');
+        
+        if (printWindow) {
+          printWindow.addEventListener('load', () => {
+            printWindow.print();
+            URL.revokeObjectURL(url);
+          });
+        } else {
+          toast.error("Impossible d'ouvrir la fenêtre d'impression. Vérifiez les paramètres de votre navigateur.");
+        }
+        
+        const patientInfo = getPatientInfo(patientId);
+        
+        if (patientInfo) {
+          toast.success(`Feuille de soins pré-remplie prête pour impression pour ${patientInfo.name}`);
+        }
+        
+        return true;
+      }
+      return false;
+    }
+    
+    // Comportement par défaut pour les impressions non personnalisées
     if (patientId) {
       const patientInfo = getPatientInfo(patientId);
       if (patientInfo) {

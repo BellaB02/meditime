@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -147,7 +146,8 @@ const Calendar = () => {
           time: appointment.time,
           patientName: appointment.patient.name,
           patientAddress: appointment.patient.address
-        }
+        },
+        true // Utiliser la nouvelle fonctionnalité de pré-remplissage
       );
       
       toast.success(`Feuille de soins pré-remplie téléchargée pour ${appointment.patient.name}`);

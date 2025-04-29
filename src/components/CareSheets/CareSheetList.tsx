@@ -24,25 +24,55 @@ export const CareSheetList = ({ careSheets }: CareSheetListProps) => {
   });
   
   const handleDownload = (sheet: Document) => {
-    // Passer toutes les informations disponibles pour pré-remplir la feuille de soins
-    DocumentService.downloadDocument(
-      "feuille_de_soins", 
-      sheet.patientId,
-      sheet.careInfo
-    );
-    
-    toast.success(`Téléchargement de la feuille de soins pré-remplie pour ${sheet.patientName}`);
+    try {
+      // Vérifier que toutes les informations nécessaires sont disponibles
+      if (!sheet.patientId || !sheet.careInfo) {
+        toast.error("Informations patient insuffisantes pour pré-remplir la feuille de soins");
+        return;
+      }
+      
+      // Récupérer toutes les données du patient
+      const patientData = {
+        patientId: sheet.patientId,
+        patientName: sheet.patientName || "",
+        patientInfo: sheet.patientInfo || {},
+        careInfo: {
+          ...sheet.careInfo,
+          code: sheet.careInfo.code || "AMI",
+          description: sheet.careInfo.description || sheet.careInfo.type || "Soin infirmier"
+        }
+      };
+      
+      // Passer toutes les données au service pour générer un PDF pré-rempli
+      DocumentService.downloadDocument(
+        "feuille_de_soins", 
+        sheet.patientId,
+        patientData.careInfo,
+        true // Flag pour indiquer que nous voulons une feuille pré-remplie
+      );
+      
+      toast.success(`Téléchargement de la feuille de soins pré-remplie pour ${sheet.patientName}`);
+    } catch (error) {
+      console.error("Erreur lors du téléchargement:", error);
+      toast.error("Erreur lors du téléchargement de la feuille de soins");
+    }
   };
   
   const handlePrint = (sheet: Document) => {
-    // Passer toutes les informations disponibles pour pré-remplir la feuille de soins
-    DocumentService.printDocument(
-      "feuille_de_soins", 
-      sheet.patientId,
-      sheet.careInfo
-    );
-    
-    toast.success(`Impression de la feuille de soins pré-remplie pour ${sheet.patientName}`);
+    try {
+      // Passer toutes les informations disponibles pour pré-remplir la feuille de soins
+      DocumentService.printDocument(
+        "feuille_de_soins", 
+        sheet.patientId,
+        sheet.careInfo,
+        true // Flag pour indiquer que nous voulons une feuille pré-remplie
+      );
+      
+      toast.success(`Impression de la feuille de soins pré-remplie pour ${sheet.patientName}`);
+    } catch (error) {
+      console.error("Erreur lors de l'impression:", error);
+      toast.error("Erreur lors de l'impression de la feuille de soins");
+    }
   };
 
   return (
