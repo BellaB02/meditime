@@ -2,9 +2,10 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, CheckCircle, Car, Clock } from "lucide-react";
+import { MapPin, CheckCircle, Car, Clock, Play } from "lucide-react";
 import { toast } from "sonner";
 import { CompleteRoundAnimation } from "@/components/Rounds/CompleteRoundAnimation";
+import { motion } from "framer-motion";
 
 interface RoundStop {
   id: string;
@@ -23,6 +24,7 @@ interface Round {
   date: string;
   stops: RoundStop[];
   completed: boolean;
+  started: boolean;
 }
 
 // Données fictives
@@ -32,6 +34,7 @@ const initialRounds: Round[] = [
     name: "Tournée du matin",
     date: "29/04/2025",
     completed: false,
+    started: false,
     stops: [
       {
         id: "stop-1",
@@ -70,6 +73,7 @@ const initialRounds: Round[] = [
     name: "Tournée de l'après-midi",
     date: "29/04/2025",
     completed: false,
+    started: false,
     stops: [
       {
         id: "stop-4",
@@ -98,6 +102,19 @@ const initialRounds: Round[] = [
 const Rounds = () => {
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [showAnimation, setShowAnimation] = useState(false);
+  
+  // Démarrer une tournée
+  const handleStartRound = (roundId: string) => {
+    setRounds(prev => 
+      prev.map(round => 
+        round.id === roundId 
+          ? { ...round, started: true } 
+          : round
+      )
+    );
+    
+    toast.success("Tournée démarrée");
+  };
   
   // Marquer un arrêt comme complété
   const handleCompleteStop = (roundId: string, stopId: string) => {
@@ -135,6 +152,7 @@ const Rounds = () => {
     );
     
     setShowAnimation(true);
+    toast.success("Tournée terminée avec succès");
   };
   
   // Naviguer vers l'adresse d'un patient
@@ -158,12 +176,13 @@ const Rounds = () => {
                 <CardTitle className="text-lg">{round.name}</CardTitle>
                 <p className="text-sm text-muted-foreground">{round.date}</p>
               </div>
+              
               {round.completed ? (
                 <div className="flex items-center text-green-500">
                   <CheckCircle className="mr-2 h-5 w-5" />
                   Terminée
                 </div>
-              ) : (
+              ) : round.started ? (
                 <Button 
                   onClick={() => handleCompleteRound(round.id)}
                   disabled={!round.stops.every(stop => stop.completed)}
@@ -171,14 +190,24 @@ const Rounds = () => {
                   <Car className="mr-2 h-4 w-4" />
                   Terminer la tournée
                 </Button>
+              ) : (
+                <Button 
+                  onClick={() => handleStartRound(round.id)}
+                >
+                  <Play className="mr-2 h-4 w-4" />
+                  Démarrer la tournée
+                </Button>
               )}
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {round.stops.map((stop) => (
-                  <div 
-                    key={stop.id} 
+                  <motion.div 
+                    key={stop.id}
                     className={`border rounded-lg p-4 ${stop.completed ? "border-green-200 bg-green-50/50" : ""}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
                   >
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
@@ -215,6 +244,7 @@ const Rounds = () => {
                             variant="default" 
                             size="sm"
                             onClick={() => handleCompleteStop(round.id, stop.id)}
+                            disabled={!round.started}
                           >
                             <CheckCircle className="mr-2 h-3 w-3" />
                             Terminer
@@ -222,7 +252,7 @@ const Rounds = () => {
                         )}
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </CardContent>

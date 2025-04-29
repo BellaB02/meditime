@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Patients from "./pages/Patients";
@@ -24,10 +24,10 @@ import Auth from "./pages/Auth";
 import PatientDashboard from "./pages/PatientDashboard";
 
 // Transitions entre les pages
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import "./styles/pageTransitions.css";
 
-// Contexte d'authentification simulé
+// Contexte d'authentification
 interface AuthContextType {
   isAuthenticated: boolean;
   userType: string | null;
@@ -41,6 +41,25 @@ export const AuthContext = React.createContext<AuthContextType>({
   login: () => {},
   logout: () => {}
 });
+
+// Animations pour les pages
+const PageTransition = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+};
 
 const queryClient = new QueryClient();
 
@@ -89,39 +108,41 @@ const App = () => {
               <Toaster />
               <Sonner />
               <BrowserRouter>
-                <AnimatePresence mode="wait">
-                  <SidebarProvider>
-                    <Routes>
-                      <Route path="/auth" element={
-                        isAuthenticated ? (
-                          userType === "patient" ? <Navigate to="/patient-dashboard" /> : <Navigate to="/" />
-                        ) : <Auth />
-                      } />
-                      
-                      <Route path="/patient-dashboard" element={
-                        isAuthenticated && userType === "patient" ? 
-                        <PatientDashboard /> : <Navigate to="/auth" />
-                      } />
-                      
-                      <Route path="/" element={
-                        isAuthenticated && userType === "soignant" ? 
-                        <Layout /> : <Navigate to="/auth" />
-                      }>
-                        <Route index element={<Index />} />
-                        <Route path="/patients" element={<Patients />} />
-                        <Route path="/patients/:id" element={<PatientFile />} />
-                        <Route path="/calendar" element={<Calendar />} />
-                        <Route path="/admin" element={<AdminTasks />} />
-                        <Route path="/admin/billing" element={<BillingPage />} />
-                        <Route path="/settings" element={<Settings />} />
-                        <Route path="/caresheets" element={<CareSheets />} />
-                        <Route path="/rounds" element={<Rounds />} />
-                        <Route path="/practice" element={<Practice />} />
-                        <Route path="*" element={<NotFound />} />
-                      </Route>
-                    </Routes>
-                  </SidebarProvider>
-                </AnimatePresence>
+                <SidebarProvider>
+                  <Routes>
+                    <Route path="/auth" element={
+                      isAuthenticated ? (
+                        userType === "patient" ? <Navigate to="/patient-dashboard" /> : <Navigate to="/" />
+                      ) : <Auth />
+                    } />
+                    
+                    <Route path="/patient-dashboard" element={
+                      isAuthenticated && userType === "patient" ? 
+                      <PatientDashboard /> : <Navigate to="/auth" />
+                    } />
+                    
+                    <Route path="/" element={
+                      isAuthenticated && userType === "soignant" ? 
+                      <Layout>
+                        <PageTransition>
+                          <Routes>
+                            <Route index element={<Index />} />
+                            <Route path="/patients" element={<Patients />} />
+                            <Route path="/patients/:id" element={<PatientFile />} />
+                            <Route path="/calendar" element={<Calendar />} />
+                            <Route path="/admin" element={<AdminTasks />} />
+                            <Route path="/admin/billing" element={<BillingPage />} />
+                            <Route path="/settings" element={<Settings />} />
+                            <Route path="/caresheets" element={<CareSheets />} />
+                            <Route path="/rounds" element={<Rounds />} />
+                            <Route path="/practice" element={<Practice />} />
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </PageTransition>
+                      </Layout> : <Navigate to="/auth" />
+                    } />
+                  </Routes>
+                </SidebarProvider>
               </BrowserRouter>
             </AuthContext.Provider>
           </PracticeProvider>

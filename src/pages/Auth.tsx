@@ -1,8 +1,8 @@
 
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { motion } from "framer-motion";
+import { AuthContext } from "../App";
 
 // Schéma de validation pour le formulaire de connexion
 const loginFormSchema = z.object({
@@ -36,6 +38,7 @@ const registerFormSchema = z.object({
 const Auth = () => {
   const [activeTab, setActiveTab] = useState("login");
   const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
 
   // Formulaire de connexion
   const loginForm = useForm<z.infer<typeof loginFormSchema>>({
@@ -66,6 +69,7 @@ const Auth = () => {
     console.log("Connexion avec:", data);
     
     // Simulation d'une connexion réussie
+    login(data.userType);
     toast.success(`Connexion réussie en tant que ${data.userType}`);
     
     // Redirection vers la page appropriée
@@ -87,13 +91,30 @@ const Auth = () => {
     setActiveTab("login");
     loginForm.setValue("email", data.email);
     loginForm.setValue("userType", data.userType);
+    
+    // Simuler une attente pour montrer un toast de confirmation
+    setTimeout(() => {
+      toast.info("Veuillez vous connecter avec vos identifiants");
+    }, 1000);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <motion.div 
+      className="min-h-screen flex items-center justify-center bg-background p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-primary">InfirmConnect</h1>
+          <motion.h1 
+            className="text-3xl font-bold text-primary"
+            initial={{ y: -20 }}
+            animate={{ y: 0 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+          >
+            Meditime
+          </motion.h1>
           <p className="text-muted-foreground mt-2">
             Connexion à votre espace de gestion de soins
           </p>
@@ -301,7 +322,7 @@ const Auth = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
