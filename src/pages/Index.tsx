@@ -50,6 +50,7 @@ export default function Index() {
           time,
           patient_id,
           care_type,
+          completed,
           patients(first_name, last_name, address)
         `)
         .eq('date', today)
@@ -64,6 +65,7 @@ export default function Index() {
       return data.map(appt => ({
         id: appt.id,
         time: appt.time.substring(0, 5), // Format HH:MM
+        completed: appt.completed || false, // Add completed property with default false
         patient: {
           id: appt.patient_id,
           name: `${appt.patients?.first_name || ""} ${appt.patients?.last_name || ""}`,

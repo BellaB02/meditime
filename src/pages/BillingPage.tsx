@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -335,7 +334,7 @@ const BillingPage = () => {
       case "pending":
         return <Badge variant="secondary">En attente</Badge>;
       case "submitted":
-        return <Badge variant="primary">Soumis</Badge>;
+        return <Badge variant="default">Soumis</Badge>;
       case "paid":
         return <Badge variant="default" className="bg-green-500">Payé</Badge>;
       case "rejected":
