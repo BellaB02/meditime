@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Pencil, Plus, User, Calendar, ListChecks, HeartPulse, FileText, MessageSquare } from "lucide-react";
 import { PatientInfoService, PatientInfo } from "@/services/PatientInfoService";
 import { VitalSignsService, VitalSign } from "@/services/VitalSignsService";
+import { PatientStatusToggle } from "@/components/patient/PatientStatusToggle";
 import VitalSignsTab from "@/components/patient/VitalSignsTab";
 import CareSheetsTab from "@/components/patient/CareSheetsTab";
 import AppointmentsTab from "@/components/patient/AppointmentsTab";
@@ -81,6 +83,14 @@ const PatientFile = () => {
     }
   };
   
+  const handleStatusChange = (newStatus: "active" | "inactive" | "urgent") => {
+    setStatus(newStatus);
+    if (id && patientInfo) {
+      PatientInfoService.updatePatient(id, { ...patientInfo, status: newStatus });
+      setPatientInfo({ ...patientInfo, status: newStatus });
+    }
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-start">
@@ -93,7 +103,14 @@ const PatientFile = () => {
         
         <div className="flex gap-2">
           {patientInfo && (
-            <ExportDataButton patient={patientInfo} />
+            <>
+              <PatientStatusToggle 
+                patientId={id || ""}
+                initialStatus={patientInfo.status || "active"}
+                onStatusChange={handleStatusChange}
+              />
+              <ExportDataButton patient={patientInfo} />
+            </>
           )}
           <Button variant="outline" onClick={() => setOpenEditDialog(true)}>
             <Pencil className="h-4 w-4 mr-2" />
@@ -159,7 +176,18 @@ const PatientFile = () => {
               </div>
               <div>
                 <Label>Statut</Label>
-                <p className="text-sm font-medium">{patientInfo?.status}</p>
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${
+                    patientInfo?.status === 'active' ? 'bg-green-500' :
+                    patientInfo?.status === 'urgent' ? 'bg-red-500' :
+                    'bg-gray-500'
+                  }`}></div>
+                  <p className="text-sm font-medium">
+                    {patientInfo?.status === 'active' ? 'Actif' :
+                     patientInfo?.status === 'urgent' ? 'Urgent' :
+                     patientInfo?.status === 'inactive' ? 'Inactif' : 'Non défini'}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -254,7 +282,12 @@ const PatientFile = () => {
               <Label htmlFor="status" className="text-right">
                 Statut
               </Label>
-              <select id="status" value={status} onChange={(e) => setStatus(e.target.value as "active" | "inactive" | "urgent")} className="col-span-3 rounded-md border-gray-200 shadow-sm focus:border-primary focus:ring-primary">
+              <select 
+                id="status" 
+                value={status} 
+                onChange={(e) => setStatus(e.target.value as "active" | "inactive" | "urgent")} 
+                className="col-span-3 rounded-md border-gray-200 shadow-sm focus:border-primary focus:ring-primary"
+              >
                 <option value="active">Actif</option>
                 <option value="inactive">Inactif</option>
                 <option value="urgent">Urgent</option>

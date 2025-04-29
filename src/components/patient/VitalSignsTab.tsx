@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,10 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { PatientService } from "@/services/PatientService";
 
 export type VitalSignsTabProps = {
-  vitalSigns: LegacyVitalSign[];
-  patientId?: string; // Add patientId as an optional prop
+  vitalSigns?: LegacyVitalSign[];
+  patientId?: string;
 };
 
 const VitalSignsTab: React.FC<VitalSignsTabProps> = ({ vitalSigns: initialVitalSigns = [], patientId }) => {
@@ -26,6 +28,16 @@ const VitalSignsTab: React.FC<VitalSignsTabProps> = ({ vitalSigns: initialVitalS
   const [heartRate, setHeartRate] = useState("");
   const [bloodPressure, setBloodPressure] = useState("");
   const [notes, setNotes] = useState("");
+  
+  // Charger les signes vitaux du patient si patientId est fourni
+  useEffect(() => {
+    if (patientId) {
+      const patientVitalSigns = PatientService.getVitalSigns(patientId);
+      if (patientVitalSigns.length > 0) {
+        setVitalSigns(patientVitalSigns);
+      }
+    }
+  }, [patientId]);
   
   const resetForm = () => {
     setTemperature("");
@@ -62,6 +74,11 @@ const VitalSignsTab: React.FC<VitalSignsTabProps> = ({ vitalSigns: initialVitalS
       bloodPressure: bloodPressure,
       notes: notes
     };
+    
+    // Si patientId est fourni, ajouter le signe vital au service
+    if (patientId) {
+      PatientService.addVitalSign(patientId, newVitalSign);
+    }
     
     setVitalSigns([newVitalSign, ...vitalSigns]);
     toast.success("Mesure ajoutée avec succès");

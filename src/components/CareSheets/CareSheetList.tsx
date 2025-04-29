@@ -1,136 +1,74 @@
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Document, DocumentService } from "@/services/DocumentService";
-import { Search, Calendar, Download, Printer, FileText } from "lucide-react";
+import { Download, FileText } from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { Document } from "@/services/DocumentService";
+import { PDFGenerationService } from "@/services/PDFGenerationService";
 import { toast } from "sonner";
 
 interface CareSheetListProps {
   careSheets: Document[];
 }
 
-export const CareSheetList = ({ careSheets }: CareSheetListProps) => {
-  const [search, setSearch] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
-  
-  const filteredCareSheets = careSheets.filter(sheet => {
-    const matchSearch = sheet.patientName?.toLowerCase().includes(search.toLowerCase()) || 
-                       sheet.name.toLowerCase().includes(search.toLowerCase());
-    const matchDate = dateFilter ? sheet.date.includes(dateFilter) : true;
-    return matchSearch && matchDate;
-  });
-  
-  const handleDownload = (sheet: Document) => {
+export const CareSheetList: React.FC<CareSheetListProps> = ({ careSheets }) => {
+  const handleDownload = (careSheet: Document) => {
     try {
-      // Vérifier que toutes les informations nécessaires sont disponibles
-      if (!sheet.patientId) {
-        toast.error("Informations patient insuffisantes pour pré-remplir la feuille de soins");
-        return;
+      // Préparer les informations de soin
+      const careInfo = {
+        type: careSheet.careInfo?.type || "",
+        date: careSheet.careInfo?.date || format(new Date(), "dd/MM/yyyy"),
+        time: format(new Date(), "HH:mm"),
+        code: careSheet.careInfo?.code || "",
+        description: careSheet.careInfo?.description || ""
+      };
+
+      // Générer le PDF
+      const doc = PDFGenerationService.generatePrefilledPDF(careSheet.patientId, careInfo);
+      
+      if (doc) {
+        // Télécharger le PDF
+        PDFGenerationService.savePDF(doc, careSheet.patientId || "patient");
+        toast.success("Feuille de soins téléchargée avec succès");
+      } else {
+        toast.error("Erreur lors de la génération de la feuille de soins");
       }
-      
-      // Créer un lien de téléchargement et le déclencher
-      const link = document.createElement('a');
-      link.href = '/documents/feuille_de_soins_vierge.pdf'; // Utiliser un document exemple
-      link.setAttribute('download', `feuille_de_soins_${sheet.patientName?.replace(/\s+/g, '_').toLowerCase()}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast.success(`Téléchargement de la feuille de soins pré-remplie pour ${sheet.patientName}`);
     } catch (error) {
       console.error("Erreur lors du téléchargement:", error);
-      toast.error("Erreur lors du téléchargement de la feuille de soins");
-    }
-  };
-  
-  const handlePrint = (sheet: Document) => {
-    try {
-      // Ouvrir une nouvelle fenêtre pour l'impression
-      const printWindow = window.open('/documents/feuille_de_soins_vierge.pdf', '_blank');
-      if (printWindow) {
-        printWindow.addEventListener('load', () => {
-          printWindow.print();
-        });
-      } else {
-        toast.error("Impossible d'ouvrir la fenêtre d'impression");
-      }
-      
-      toast.success(`Impression de la feuille de soins pré-remplie pour ${sheet.patientName}`);
-    } catch (error) {
-      console.error("Erreur lors de l'impression:", error);
-      toast.error("Erreur lors de l'impression de la feuille de soins");
+      toast.error("Erreur lors du téléchargement");
     }
   };
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
-            Feuilles de soins
-          </CardTitle>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative w-full sm:w-auto">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Rechercher..."
-                className="pl-8"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <Input
-              type="date"
-              className="w-auto"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-            />
+      <CardContent className="p-0">
+        {careSheets.length > 0 ? (
+          <div className="divide-y">
+            {careSheets.map((sheet) => (
+              <div key={sheet.id} className="p-4 flex justify-between items-center hover:bg-accent/50">
+                <div>
+                  <div className="font-medium">{sheet.name}</div>
+                  <div className="text-sm text-muted-foreground">
+                    <div>Patient: {sheet.patientName}</div>
+                    <div>Date: {sheet.date}</div>
+                    <div>Type de soin: {sheet.careInfo?.type} ({sheet.careInfo?.code})</div>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => handleDownload(sheet)}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Télécharger
+                </Button>
+              </div>
+            ))}
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Patient</TableHead>
-              <TableHead>Document</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredCareSheets.length > 0 ? (
-              filteredCareSheets.map((sheet) => (
-                <TableRow key={sheet.id}>
-                  <TableCell>{sheet.date}</TableCell>
-                  <TableCell>{sheet.patientName}</TableCell>
-                  <TableCell>{sheet.name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleDownload(sheet)}>
-                        <Download size={16} className="mr-2" />
-                        Télécharger
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handlePrint(sheet)}>
-                        <Printer size={16} />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                  Aucune feuille de soins trouvée
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        ) : (
+          <div className="py-8 text-center text-muted-foreground">
+            <FileText className="mx-auto h-8 w-8 mb-2" />
+            <p>Aucune feuille de soins disponible</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

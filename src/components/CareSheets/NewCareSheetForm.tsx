@@ -1,59 +1,163 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogContent } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { PatientService } from "@/services/PatientService";
+import { DocumentService } from "@/services/DocumentService";
 
 interface NewCareSheetFormProps {
   onClose: () => void;
 }
 
-export const NewCareSheetForm = ({ onClose }: NewCareSheetFormProps) => {
-  const handleCreateNewSheet = (e: React.FormEvent) => {
+export const NewCareSheetForm: React.FC<NewCareSheetFormProps> = ({ onClose }) => {
+  const [loading, setLoading] = useState(false);
+  const [patientId, setPatientId] = useState("");
+  const [careType, setCareType] = useState("");
+  const [careCode, setCareCode] = useState("");
+  const [patientSearch, setPatientSearch] = useState("");
+
+  // Patients filtrés selon la recherche
+  const filteredPatients = PatientService.getAllPatients().filter(p => 
+    `${p.firstName} ${p.name}`.toLowerCase().includes(patientSearch.toLowerCase())
+  );
+
+  // Liste des types de soins disponibles (à compléter selon vos besoins)
+  const careTypes = [
+    { label: "Pansement", value: "Pansement", code: "AMI 2" },
+    { label: "Injection insuline", value: "Injection insuline", code: "AMI 1" },
+    { label: "Prise de sang", value: "Prise de sang", code: "AMI 1.5" },
+    { label: "Toilette complète", value: "Toilette complète", code: "AIS 4" }
+  ];
+
+  const handleSelectPatient = (id: string) => {
+    setPatientId(id);
+    const patient = PatientService.getPatientInfo(id);
+    if (patient) {
+      setPatientSearch(`${patient.firstName} ${patient.name}`);
+    }
+  };
+
+  const handleSelectCareType = (value: string) => {
+    setCareType(value);
+    const selectedType = careTypes.find(t => t.value === value);
+    if (selectedType) {
+      setCareCode(selectedType.code);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Dans une vraie application, cela créerait une vraie feuille de soins
-    // avec toutes les informations patient
-    toast.success("Nouvelle feuille de soins créée avec les données du patient");
-    onClose();
+    if (!patientId || !careType) {
+      toast.error("Veuillez sélectionner un patient et un type de soin");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Simulation de la création d'une feuille de soins
+      const patientInfo = PatientService.getPatientInfo(patientId);
+      
+      if (patientInfo) {
+        // Générer la feuille de soins
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('fr-FR');
+        
+        // Ajouter une feuille de soins à notre service (simulation)
+        DocumentService.generateCareSheet(
+          `apt-${Date.now()}`,
+          patientInfo.firstName + " " + patientInfo.name, 
+          patientId
+        );
+        
+        toast.success("Feuille de soins créée avec succès");
+        onClose();
+      } else {
+        toast.error("Patient non trouvé");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la création de la feuille de soins:", error);
+      toast.error("Erreur lors de la création de la feuille de soins");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <DialogContent>
+    <DialogContent className="sm:max-w-[500px]">
       <DialogHeader>
-        <DialogTitle>Créer une feuille de soins</DialogTitle>
+        <DialogTitle>Nouvelle feuille de soins</DialogTitle>
         <DialogDescription>
-          Remplissez les informations pour générer une nouvelle feuille de soins
+          Créez une nouvelle feuille de soins pour un patient
         </DialogDescription>
       </DialogHeader>
-      <form onSubmit={handleCreateNewSheet} className="space-y-4 py-4">
-        <div>
-          <Label htmlFor="patientSelect">Patient</Label>
-          <select id="patientSelect" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">
-            <option value="">Sélectionner un patient</option>
-            <option value="p1">Jean Dupont</option>
-            <option value="p2">Marie Martin</option>
-            <option value="p3">Robert Petit</option>
-          </select>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="patientSearch">Patient</Label>
+          <Input
+            id="patientSearch"
+            placeholder="Rechercher un patient"
+            value={patientSearch}
+            onChange={(e) => setPatientSearch(e.target.value)}
+          />
+          {patientSearch && (
+            <div className="bg-background border rounded-md mt-1 max-h-40 overflow-y-auto">
+              {filteredPatients.length > 0 ? (
+                filteredPatients.map((patient) => (
+                  <Button
+                    key={patient.id}
+                    type="button"
+                    variant="ghost"
+                    className="w-full justify-start text-left px-2 py-1 h-auto"
+                    onClick={() => handleSelectPatient(patient.id)}
+                  >
+                    {patient.firstName} {patient.name}
+                  </Button>
+                ))
+              ) : (
+                <div className="p-2 text-sm text-muted-foreground">Aucun patient trouvé</div>
+              )}
+            </div>
+          )}
         </div>
-        <div>
-          <Label htmlFor="careDate">Date du soin</Label>
-          <Input id="careDate" type="date" required />
-        </div>
-        <div>
+        
+        <div className="space-y-2">
           <Label htmlFor="careType">Type de soin</Label>
-          <select id="careType" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">
-            <option value="">Sélectionner un type de soin</option>
-            <option value="AMI 1">AMI 1 - Prélèvement sanguin</option>
-            <option value="AMI 1.5">AMI 1.5 - Injection intraveineuse</option>
-            <option value="AMI 2">AMI 2 - Pansement simple</option>
-            <option value="AMI 3">AMI 3 - Pansement complexe</option>
-          </select>
+          <Select value={careType} onValueChange={handleSelectCareType}>
+            <SelectTrigger id="careType">
+              <SelectValue placeholder="Sélectionner un type de soin" />
+            </SelectTrigger>
+            <SelectContent>
+              {careTypes.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.label} ({type.code})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="code">Code NGAP</Label>
+          <Input
+            id="code"
+            value={careCode}
+            onChange={(e) => setCareCode(e.target.value)}
+            placeholder="Code NGAP"
+          />
+        </div>
+        
         <DialogFooter>
-          <Button type="submit">Créer</Button>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? "Création..." : "Créer"}
+          </Button>
         </DialogFooter>
       </form>
     </DialogContent>

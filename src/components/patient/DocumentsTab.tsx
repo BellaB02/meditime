@@ -16,19 +16,23 @@ interface DocumentsTabProps {
 const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [documentTitle, setDocumentTitle] = useState("");
+  const [documentType, setDocumentType] = useState("");
   
   const documents = [
     {
       id: "doc-1",
       title: "Analyse de sang",
       date: "15/04/2025",
-      type: "Résultat d'analyse"
+      type: "Résultat d'analyse",
+      filePath: "/documents/aide_memoire_cotation_ngap.pdf"
     },
     {
       id: "doc-2",
       title: "Radiographie",
       date: "10/04/2025",
-      type: "Imagerie"
+      type: "Imagerie",
+      filePath: "/documents/feuille_de_soins_vierge.pdf"
     }
   ];
   
@@ -39,17 +43,48 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
   };
   
   const handleUpload = () => {
-    if (selectedFile) {
-      toast.success(`Document "${selectedFile.name}" ajouté avec succès`);
-      setSelectedFile(null);
-      setIsDialogOpen(false);
-    } else {
+    if (!selectedFile) {
       toast.error("Veuillez sélectionner un fichier");
+      return;
     }
+    
+    if (!documentTitle.trim()) {
+      toast.error("Veuillez entrer un titre pour le document");
+      return;
+    }
+    
+    // Simuler le téléversement du fichier
+    toast.success(`Document "${documentTitle}" ajouté avec succès`);
+    setSelectedFile(null);
+    setDocumentTitle("");
+    setDocumentType("");
+    setIsDialogOpen(false);
   };
   
-  const handleDownload = (documentId: string) => {
-    toast.success("Téléchargement du document");
+  const handleDownload = (documentId: string, filePath: string) => {
+    try {
+      // Créer un lien pour télécharger le fichier PDF
+      const link = document.createElement('a');
+      link.href = filePath;
+      
+      // Définir un nom de fichier basé sur le titre du document
+      const document = documents.find(doc => doc.id === documentId);
+      const fileName = document ? 
+        `${document.title.replace(/\s+/g, '_').toLowerCase()}.pdf` : 
+        'document.pdf';
+        
+      link.setAttribute('download', fileName);
+      
+      // Ajouter le lien au document, cliquer dessus, puis le supprimer
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success(`Téléchargement du document: ${document?.title || "Document"}`);
+    } catch (error) {
+      console.error("Erreur lors du téléchargement:", error);
+      toast.error("Erreur lors du téléchargement du document");
+    }
   };
   
   return (
@@ -60,7 +95,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
           title: "Ordonnance de renouvellement",
           date: "15/04/2025",
           doctor: "Dr. Martin",
-          file: "/documents/ordonnance_new.pdf"
+          file: "/documents/aide_memoire_cotation_ngap.pdf"
         }
       ]} patientName="Patient" />
       
@@ -84,7 +119,11 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
                       <div>Type: {doc.type}</div>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => handleDownload(doc.id)}>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleDownload(doc.id, doc.filePath)}
+                  >
                     <Download size={16} className="mr-2" />
                     Télécharger
                   </Button>
@@ -111,12 +150,22 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
           <div className="space-y-4">
             <div>
               <Label htmlFor="documentTitle">Titre du document</Label>
-              <Input id="documentTitle" placeholder="Ex: Résultats d'analyse" />
+              <Input 
+                id="documentTitle" 
+                placeholder="Ex: Résultats d'analyse" 
+                value={documentTitle}
+                onChange={(e) => setDocumentTitle(e.target.value)}
+              />
             </div>
             
             <div>
               <Label htmlFor="documentType">Type de document</Label>
-              <Input id="documentType" placeholder="Ex: Analyse, Imagerie, etc." />
+              <Input 
+                id="documentType" 
+                placeholder="Ex: Analyse, Imagerie, etc." 
+                value={documentType}
+                onChange={(e) => setDocumentType(e.target.value)}
+              />
             </div>
             
             <div>
