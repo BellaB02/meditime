@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckIcon, AlertCircle } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-type PlanType = "basic" | "standard" | "premium";
+type PlanType = "free" | "pro";
 
 interface PlanDetails {
   name: string;
@@ -19,47 +19,36 @@ interface PlanDetails {
 export function SubscriptionSection() {
   const isMobile = useIsMobile();
   
-  const [currentPlan, setCurrentPlan] = useState<PlanType>("standard");
+  const [currentPlan, setCurrentPlan] = useState<PlanType>("free");
   
   const plans: Record<PlanType, PlanDetails> = {
-    basic: {
-      name: "Basique",
-      price: "9,99€/mois",
+    free: {
+      name: "Gratuit",
+      price: "0€/mois",
       features: [
-        "Jusqu'à 50 patients",
+        "Jusqu'à 30 patients",
         "Planning de rendez-vous",
         "Gestion des tournées",
         "Fonctionnalités de base",
       ],
-      buttonText: "Passer au plan Basique",
-      current: currentPlan === "basic",
+      buttonText: "Plan actuel",
+      current: currentPlan === "free",
     },
-    standard: {
-      name: "Standard",
-      price: "19,99€/mois",
+    pro: {
+      name: "Pro",
+      price: "11,99€/mois",
       features: [
-        "Jusqu'à 150 patients",
-        "Toutes les fonctionnalités basiques",
+        "Patients illimités",
+        "Toutes les fonctionnalités gratuites",
         "Feuilles de soins électroniques",
         "Télétransmission",
         "Facturation automatique",
-      ],
-      buttonText: "Passer au plan Standard",
-      current: currentPlan === "standard",
-    },
-    premium: {
-      name: "Premium",
-      price: "29,99€/mois",
-      features: [
-        "Patients illimités",
-        "Toutes les fonctionnalités standard",
         "Statistiques avancées",
         "Cabinet multi-praticiens",
-        "Support prioritaire 24/7",
-        "Mises à jour en avant-première",
+        "Support prioritaire",
       ],
-      buttonText: "Passer au plan Premium",
-      current: currentPlan === "premium",
+      buttonText: "Passer au plan Pro",
+      current: currentPlan === "pro",
     },
   };
 
@@ -83,19 +72,27 @@ export function SubscriptionSection() {
                   <h3 className="font-medium">Plan actuel: {plans[currentPlan].name}</h3>
                   <Badge variant="default">Actif</Badge>
                 </div>
-                <p className="text-muted-foreground text-sm mt-1">
-                  Prochain prélèvement le 15/05/2023 - {plans[currentPlan].price}
-                </p>
+                {currentPlan === "free" ? (
+                  <p className="text-muted-foreground text-sm mt-1">
+                    Plan gratuit - Aucun paiement requis
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground text-sm mt-1">
+                    Prochain prélèvement le 15/05/2025 - {plans[currentPlan].price}
+                  </p>
+                )}
               </div>
-              <div>
-                <Button variant="outline" size="sm">Gérer le paiement</Button>
-              </div>
+              {currentPlan === "pro" && (
+                <div>
+                  <Button variant="outline" size="sm">Gérer le paiement</Button>
+                </div>
+              )}
             </div>
           </div>
 
           <div>
             <h3 className="text-lg font-medium mb-4">Comparer les plans</h3>
-            <div className={`grid ${isMobile ? "grid-cols-1 gap-4" : "grid-cols-3 gap-6"}`}>
+            <div className={`grid ${isMobile ? "grid-cols-1 gap-4" : "grid-cols-2 gap-6"}`}>
               {Object.entries(plans).map(([key, plan]) => (
                 <div 
                   key={key} 
