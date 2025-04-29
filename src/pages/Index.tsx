@@ -6,13 +6,40 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Calendar, Users } from "lucide-react";
 
 export default function Index() {
+  // Sample data for appointments
+  const todayAppointments = [
+    {
+      id: "1",
+      time: "10:00",
+      patient: {
+        id: "p1",
+        name: "Jean Dupont",
+        address: "15 Rue de Paris, 75001 Paris",
+        care: "Pansement"
+      }
+    },
+    {
+      id: "2",
+      time: "11:30",
+      patient: {
+        id: "p2",
+        name: "Marie Martin",
+        address: "8 Avenue Victor Hugo, 75016 Paris",
+        care: "Injection insuline"
+      }
+    }
+  ];
+
   return (
     <div className="space-y-6">
       <StatsCards />
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
-          <AppointmentList />
+          <AppointmentList 
+            title="Rendez-vous du jour" 
+            appointments={todayAppointments} 
+          />
         </div>
         <div className="space-y-6">
           <DailyCareProgress completed={3} total={7} />
