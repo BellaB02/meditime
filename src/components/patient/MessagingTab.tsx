@@ -13,8 +13,10 @@ import { PatientMessage } from '@/integrations/supabase/services/types';
 import { useProfile } from '@/hooks/useProfile';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Send, Clock, CheckCheck } from 'lucide-react';
+import { Send, Clock, CheckCheck, FileSearch, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MessagingService, useMessaging } from '@/services/MessagingService';
+import { NotificationService } from '@/services/NotificationService';
 
 const MessagingTab = () => {
   const { id: patientId } = useParams<{ id: string }>();
@@ -23,6 +25,7 @@ const MessagingTab = () => {
   const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
   const { profile } = useProfile();
+  const { sendMessage, markAsRead } = useMessaging();
 
   // Récupération des messages
   useEffect(() => {
@@ -31,14 +34,8 @@ const MessagingTab = () => {
     const fetchMessages = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('patient_messages')
-          .select('*')
-          .eq('patient_id', patientId)
-          .order('created_at', { ascending: false });
-          
-        if (error) throw error;
-        setMessages(data || []);
+        const data = await MessagingService.getPatientMessages(patientId);
+        setMessages(data);
       } catch (err) {
         console.error('Erreur lors de la récupération des messages:', err);
         toast.error("Impossible de charger les messages");
@@ -62,7 +59,17 @@ const MessagingTab = () => {
         },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            setMessages(prev => [payload.new as PatientMessage, ...prev]);
+            const newMessage = payload.new as PatientMessage;
+            setMessages(prev => [newMessage, ...prev]);
+            
+            // Notifier si le message vient du patient
+            if (newMessage.is_from_patient) {
+              NotificationService.showToastNotification(
+                "Nouveau message du patient", 
+                "Le patient vous a envoyé un nouveau message", 
+                "info"
+              );
+            }
           }
         }
       )
@@ -76,19 +83,10 @@ const MessagingTab = () => {
   // Envoi d'un message
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
-      const { data, error } = await supabase
-        .from('patient_messages')
-        .insert({
-          patient_id: patientId,
-          sender_id: profile?.id,
-          content,
-          is_from_patient: false,
-        })
-        .select()
-        .single();
-        
-      if (error) throw error;
-      return data;
+      if (!profile?.id) {
+        throw new Error("Non connecté");
+      }
+      return sendMessage(patientId!, content);
     },
     onSuccess: () => {
       setNewMessage('');
@@ -104,19 +102,11 @@ const MessagingTab = () => {
   // Marquer un message comme lu
   const markAsReadMutation = useMutation({
     mutationFn: async (messageId: string) => {
-      const { data, error } = await supabase
-        .from('patient_messages')
-        .update({ read_at: new Date().toISOString() })
-        .eq('id', messageId)
-        .select()
-        .single();
-        
-      if (error) throw error;
-      return data;
+      return markAsRead(messageId);
     },
     onSuccess: (data) => {
       setMessages(prev => 
-        prev.map(msg => msg.id === data.id ? data : msg)
+        prev.map(msg => msg.id === data?.id ? data : msg)
       );
       queryClient.invalidateQueries({ queryKey: ['patient', patientId, 'messages'] });
     },
@@ -140,7 +130,9 @@ const MessagingTab = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Communication avec le patient</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5" /> Envoyer un message
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSendMessage} className="space-y-4">
@@ -150,7 +142,11 @@ const MessagingTab = () => {
               placeholder="Écrivez un message au patient..."
               className="min-h-[100px]"
             />
-            <div className="flex justify-end">
+            <div className="flex justify-between">
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Bell className="h-4 w-4 mr-1" />
+                <span>Le patient recevra une notification</span>
+              </div>
               <Button 
                 type="submit" 
                 disabled={!newMessage.trim() || sendMessageMutation.isPending}
@@ -164,8 +160,14 @@ const MessagingTab = () => {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Historique des messages</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <FileSearch className="h-5 w-5" /> Historique des messages
+          </CardTitle>
+          
+          <Button variant="outline" size="sm" className="h-8" onClick={() => setMessages([])}>
+            Actualiser
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -192,29 +194,38 @@ const MessagingTab = () => {
                     className={cn(
                       "p-4 rounded-lg",
                       message.is_from_patient 
-                        ? "bg-muted border border-border" 
+                        ? "bg-muted/60 border border-border" 
                         : "bg-primary/10"
                     )}
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <span className="font-medium">
-                        {message.is_from_patient ? 'Patient' : 'Soignant'}
+                      <span className="font-medium flex items-center gap-1">
+                        {message.is_from_patient ? (
+                          <>
+                            <Bell size={14} className="text-blue-500" /> Patient
+                          </>
+                        ) : (
+                          <>
+                            <Send size={14} className="text-green-500" /> Soignant
+                          </>
+                        )}
                       </span>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         {message.created_at && (
                           <span>
-                            {format(new Date(message.created_at), 'PPp', { locale: fr })}
+                            {format(new Date(message.created_at), 'EEEE d MMMM à HH:mm', { locale: fr })}
                           </span>
                         )}
                         {message.is_from_patient && (
                           message.read_at ? (
-                            <CheckCheck size={14} className="text-green-500" />
+                            <CheckCheck size={14} className="text-green-500" title="Lu" />
                           ) : (
                             <Button 
                               variant="ghost" 
                               size="icon" 
                               className="h-6 w-6" 
                               onClick={() => handleMarkAsRead(message.id)}
+                              title="Marquer comme lu"
                             >
                               <Clock size={14} />
                             </Button>
