@@ -1,46 +1,57 @@
 
 import { supabase } from './client';
+import { Database } from './types';
 
-export interface SupabaseService {
-  // Fetch application settings
-  getAppSettings: () => Promise<any>;
-  
-  // Nursing acts management
-  getNursingActs: () => Promise<any[]>;
-  getNursingAct: (id: string) => Promise<any>;
-  createNursingAct: (data: any) => Promise<any>;
-  updateNursingAct: (id: string, data: any) => Promise<any>;
-  deleteNursingAct: (id: string) => Promise<void>;
-  
-  // Majorations management
-  getMajorations: () => Promise<any[]>;
-  getMajoration: (id: string) => Promise<any>;
-  createMajoration: (data: any) => Promise<any>;
-  updateMajoration: (id: string, data: any) => Promise<any>;
-  deleteMajoration: (id: string) => Promise<void>;
-}
+// Type pour les actes infirmiers
+type NursingAct = Database["public"]["Tables"]["nursing_acts"]["Row"];
+type MajorationAct = Database["public"]["Tables"]["majorations"]["Row"];
+type AppSettings = Database["public"]["Tables"]["app_settings"]["Row"];
 
-// Implementation of the SupabaseService
-export const supabaseService: SupabaseService = {
-  // App settings
+// Service Supabase pour interagir avec l'API
+export const supabaseService = {
+  
+  // App Settings
   getAppSettings: async () => {
     const { data, error } = await supabase
       .from('app_settings')
       .select('*');
       
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching app settings:', error);
+      throw error;
+    }
+    
     return data;
   },
   
-  // Nursing acts
+  updateAppSetting: async (key: string, value: string) => {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .update({ setting_value: value })
+      .eq('setting_key', key)
+      .select();
+      
+    if (error) {
+      console.error(`Error updating app setting ${key}:`, error);
+      throw error;
+    }
+    
+    return data[0];
+  },
+  
+  // Nursing Acts
   getNursingActs: async () => {
     const { data, error } = await supabase
       .from('nursing_acts')
       .select('*')
       .order('code', { ascending: true });
       
-    if (error) throw error;
-    return data || [];
+    if (error) {
+      console.error('Error fetching nursing acts:', error);
+      throw error;
+    }
+    
+    return data;
   },
   
   getNursingAct: async (id: string) => {
@@ -50,31 +61,41 @@ export const supabaseService: SupabaseService = {
       .eq('id', id)
       .single();
       
-    if (error) throw error;
+    if (error) {
+      console.error(`Error fetching nursing act ${id}:`, error);
+      throw error;
+    }
+    
     return data;
   },
   
-  createNursingAct: async (data: any) => {
-    const { data: createdAct, error } = await supabase
+  createNursingAct: async (nursingAct: Omit<NursingAct, 'id' | 'created_at' | 'updated_at'>) => {
+    const { data, error } = await supabase
       .from('nursing_acts')
-      .insert(data)
-      .select()
-      .single();
+      .insert([nursingAct])
+      .select();
       
-    if (error) throw error;
-    return createdAct;
+    if (error) {
+      console.error('Error creating nursing act:', error);
+      throw error;
+    }
+    
+    return data[0];
   },
   
-  updateNursingAct: async (id: string, data: any) => {
-    const { data: updatedAct, error } = await supabase
+  updateNursingAct: async (id: string, nursingAct: Partial<NursingAct>) => {
+    const { data, error } = await supabase
       .from('nursing_acts')
-      .update(data)
+      .update(nursingAct)
       .eq('id', id)
-      .select()
-      .single();
+      .select();
       
-    if (error) throw error;
-    return updatedAct;
+    if (error) {
+      console.error(`Error updating nursing act ${id}:`, error);
+      throw error;
+    }
+    
+    return data[0];
   },
   
   deleteNursingAct: async (id: string) => {
@@ -83,7 +104,12 @@ export const supabaseService: SupabaseService = {
       .delete()
       .eq('id', id);
       
-    if (error) throw error;
+    if (error) {
+      console.error(`Error deleting nursing act ${id}:`, error);
+      throw error;
+    }
+    
+    return true;
   },
   
   // Majorations
@@ -93,8 +119,12 @@ export const supabaseService: SupabaseService = {
       .select('*')
       .order('code', { ascending: true });
       
-    if (error) throw error;
-    return data || [];
+    if (error) {
+      console.error('Error fetching majorations:', error);
+      throw error;
+    }
+    
+    return data;
   },
   
   getMajoration: async (id: string) => {
@@ -104,31 +134,41 @@ export const supabaseService: SupabaseService = {
       .eq('id', id)
       .single();
       
-    if (error) throw error;
+    if (error) {
+      console.error(`Error fetching majoration ${id}:`, error);
+      throw error;
+    }
+    
     return data;
   },
   
-  createMajoration: async (data: any) => {
-    const { data: createdMajoration, error } = await supabase
+  createMajoration: async (majoration: Omit<MajorationAct, 'id' | 'created_at' | 'updated_at'>) => {
+    const { data, error } = await supabase
       .from('majorations')
-      .insert(data)
-      .select()
-      .single();
+      .insert([majoration])
+      .select();
       
-    if (error) throw error;
-    return createdMajoration;
+    if (error) {
+      console.error('Error creating majoration:', error);
+      throw error;
+    }
+    
+    return data[0];
   },
   
-  updateMajoration: async (id: string, data: any) => {
-    const { data: updatedMajoration, error } = await supabase
+  updateMajoration: async (id: string, majoration: Partial<MajorationAct>) => {
+    const { data, error } = await supabase
       .from('majorations')
-      .update(data)
+      .update(majoration)
       .eq('id', id)
-      .select()
-      .single();
+      .select();
       
-    if (error) throw error;
-    return updatedMajoration;
+    if (error) {
+      console.error(`Error updating majoration ${id}:`, error);
+      throw error;
+    }
+    
+    return data[0];
   },
   
   deleteMajoration: async (id: string) => {
@@ -137,6 +177,42 @@ export const supabaseService: SupabaseService = {
       .delete()
       .eq('id', id);
       
-    if (error) throw error;
+    if (error) {
+      console.error(`Error deleting majoration ${id}:`, error);
+      throw error;
+    }
+    
+    return true;
+  },
+  
+  // Profiles
+  getProfile: async (userId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+      
+    if (error) {
+      console.error(`Error fetching profile for user ${userId}:`, error);
+      throw error;
+    }
+    
+    return data;
+  },
+  
+  updateProfile: async (userId: string, profile: { first_name?: string, last_name?: string }) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(profile)
+      .eq('id', userId)
+      .select();
+      
+    if (error) {
+      console.error(`Error updating profile for user ${userId}:`, error);
+      throw error;
+    }
+    
+    return data[0];
   }
 };

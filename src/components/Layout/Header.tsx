@@ -7,10 +7,10 @@ import { useSidebar } from "./SidebarProvider";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
-import { useContext } from "react";
-import { AuthContext } from "../../App";
+import { useAuth } from "@/contexts/AuthContext";
 import { usePractice } from "@/hooks/usePractice";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useProfile } from "@/hooks/useProfile";
 
 export function Header() {
   const { toggleSidebar } = useSidebar();
@@ -18,7 +18,8 @@ export function Header() {
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { logout } = useContext(AuthContext);
+  const { signOut, user } = useAuth();
+  const { profile } = useProfile();
   const { currentMember } = usePractice();
   const isMobile = useIsMobile();
   
@@ -43,28 +44,51 @@ export function Header() {
     }
   };
   
-  const handleLogout = () => {
-    logout();
-    navigate('/auth');
-    toast({
-      title: "Déconnexion réussie",
-      description: "Vous avez été déconnecté avec succès",
-    });
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/auth');
+    } catch (error) {
+      // Erreur déjà gérée dans le contexte d'authentification
+    }
   };
   
   const handleProfileClick = () => {
     navigate('/settings');
   };
 
+  // Obtenir le nom complet ou les initiales de l'utilisateur
+  const getUserDisplayName = () => {
+    if (profile) {
+      return `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || "Utilisateur";
+    }
+    
+    if (currentMember) {
+      return currentMember.name;
+    }
+    
+    return user?.email?.split('@')[0] || "Utilisateur";
+  };
+  
   // Obtenir les initiales du nom de l'utilisateur
   const getUserInitials = () => {
-    if (!currentMember) return "?";
-    
-    const nameParts = currentMember.name.split(' ');
-    if (nameParts.length >= 2) {
-      return `${nameParts[0].charAt(0)}${nameParts[1].charAt(0)}`.toUpperCase();
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name.charAt(0)}${profile.last_name.charAt(0)}`.toUpperCase();
     }
-    return nameParts[0].charAt(0).toUpperCase();
+    
+    if (profile?.first_name) {
+      return profile.first_name.charAt(0).toUpperCase();
+    }
+    
+    if (currentMember) {
+      const nameParts = currentMember.name.split(' ');
+      if (nameParts.length >= 2) {
+        return `${nameParts[0].charAt(0)}${nameParts[1].charAt(0)}`.toUpperCase();
+      }
+      return nameParts[0].charAt(0).toUpperCase();
+    }
+    
+    return user?.email?.charAt(0).toUpperCase() || "?";
   };
   
   return (
@@ -99,9 +123,9 @@ export function Header() {
           </Button>
         </div>
         
-        {!isMobile && currentMember && (
+        {!isMobile && (
           <span className="text-sm text-muted-foreground hidden md:inline-block">
-            {currentMember.name}
+            {getUserDisplayName()}
           </span>
         )}
         

@@ -1,5 +1,5 @@
 
-import { useState, useContext } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,16 +9,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePractice } from "@/hooks/usePractice";
-import { AuthContext } from "@/App";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 
 export function ProfileSection() {
+  const { user } = useAuth();
+  const { profile, updateProfile } = useProfile();
   const { currentMember } = usePractice();
-  const { userType } = useContext(AuthContext);
   const isMobile = useIsMobile();
   
   const [formData, setFormData] = useState({
-    name: currentMember?.name || "",
-    email: currentMember?.email || "",
+    firstName: profile?.first_name || currentMember?.name?.split(' ')[0] || "",
+    lastName: profile?.last_name || currentMember?.name?.split(' ')[1] || "",
+    email: user?.email || currentMember?.email || "",
     phone: currentMember?.phone || "",
     bio: currentMember?.bio || "",
   });
@@ -30,20 +33,37 @@ export function ProfileSection() {
     });
   };
 
-  const handleSave = () => {
-    // Logique pour sauvegarder le profil (à implémenter avec Supabase)
-    toast.success("Profil mis à jour avec succès");
+  const handleSave = async () => {
+    if (profile) {
+      await updateProfile({
+        first_name: formData.firstName,
+        last_name: formData.lastName
+      });
+    } else {
+      // Logique pour sauvegarder le profil via le système existant
+      toast.success("Profil mis à jour avec succès");
+    }
   };
 
   // Obtenir les initiales du nom de l'utilisateur
   const getUserInitials = () => {
-    if (!currentMember?.name) return "?";
-    
-    const nameParts = currentMember.name.split(' ');
-    if (nameParts.length >= 2) {
-      return `${nameParts[0].charAt(0)}${nameParts[1].charAt(0)}`.toUpperCase();
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name.charAt(0)}${profile.last_name.charAt(0)}`.toUpperCase();
     }
-    return nameParts[0].charAt(0).toUpperCase();
+    
+    if (profile?.first_name) {
+      return profile.first_name.charAt(0).toUpperCase();
+    }
+    
+    if (currentMember?.name) {
+      const nameParts = currentMember.name.split(' ');
+      if (nameParts.length >= 2) {
+        return `${nameParts[0].charAt(0)}${nameParts[1].charAt(0)}`.toUpperCase();
+      }
+      return nameParts[0].charAt(0).toUpperCase();
+    }
+    
+    return user?.email?.charAt(0).toUpperCase() || "?";
   };
 
   return (
@@ -65,13 +85,24 @@ export function ProfileSection() {
           <div className="space-y-4 flex-1">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nom complet</Label>
+                <Label htmlFor="firstName">Prénom</Label>
                 <Input 
-                  id="name" 
-                  name="name" 
-                  value={formData.name} 
+                  id="firstName" 
+                  name="firstName" 
+                  value={formData.firstName} 
                   onChange={handleChange} 
-                  placeholder="Votre nom complet"
+                  placeholder="Votre prénom"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Nom</Label>
+                <Input 
+                  id="lastName" 
+                  name="lastName" 
+                  value={formData.lastName} 
+                  onChange={handleChange} 
+                  placeholder="Votre nom"
                 />
               </div>
               
@@ -84,6 +115,7 @@ export function ProfileSection() {
                   value={formData.email} 
                   onChange={handleChange} 
                   placeholder="votre.email@exemple.com"
+                  disabled={!!user} // Désactiver si connecté avec Supabase
                 />
               </div>
               
@@ -102,7 +134,7 @@ export function ProfileSection() {
                 <Label htmlFor="role">Rôle</Label>
                 <Input 
                   id="role" 
-                  value={userType === "soignant" ? "Professionnel de santé" : "Patient"} 
+                  value={profile?.role === "admin" ? "Administrateur" : profile?.role === "user" ? "Utilisateur" : "Professionnel de santé"} 
                   readOnly
                   disabled
                 />

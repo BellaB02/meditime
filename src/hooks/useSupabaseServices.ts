@@ -1,8 +1,13 @@
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabaseService } from '@/integrations/supabase/services';
 import { toast } from 'sonner';
+import { Database } from '@/integrations/supabase/types';
+
+// Type for nursing acts
+type NursingAct = Database["public"]["Tables"]["nursing_acts"]["Row"];
+type MajorationAct = Database["public"]["Tables"]["majorations"]["Row"];
+type AppSettings = Database["public"]["Tables"]["app_settings"]["Row"];
 
 export function useSupabaseServices() {
   const queryClient = useQueryClient();
@@ -33,12 +38,13 @@ export function useSupabaseServices() {
   
   const useCreateNursingAct = () => {
     return useMutation({
-      mutationFn: (data: any) => supabaseService.createNursingAct(data),
+      mutationFn: (data: Omit<NursingAct, 'id' | 'created_at' | 'updated_at'>) => 
+        supabaseService.createNursingAct(data),
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['nursing-acts'] });
         toast.success("Acte infirmier créé avec succès");
       },
-      onError: (error) => {
+      onError: (error: any) => {
         toast.error("Erreur lors de la création de l'acte infirmier");
         console.error("Error creating nursing act:", error);
       }
@@ -47,14 +53,14 @@ export function useSupabaseServices() {
   
   const useUpdateNursingAct = () => {
     return useMutation({
-      mutationFn: ({ id, data }: { id: string, data: any }) => 
+      mutationFn: ({ id, data }: { id: string, data: Partial<NursingAct> }) => 
         supabaseService.updateNursingAct(id, data),
       onSuccess: (_, variables) => {
         queryClient.invalidateQueries({ queryKey: ['nursing-acts'] });
         queryClient.invalidateQueries({ queryKey: ['nursing-act', variables.id] });
         toast.success("Acte infirmier mis à jour avec succès");
       },
-      onError: (error) => {
+      onError: (error: any) => {
         toast.error("Erreur lors de la mise à jour de l'acte infirmier");
         console.error("Error updating nursing act:", error);
       }
@@ -68,7 +74,7 @@ export function useSupabaseServices() {
         queryClient.invalidateQueries({ queryKey: ['nursing-acts'] });
         toast.success("Acte infirmier supprimé avec succès");
       },
-      onError: (error) => {
+      onError: (error: any) => {
         toast.error("Erreur lors de la suppression de l'acte infirmier");
         console.error("Error deleting nursing act:", error);
       }
@@ -93,12 +99,13 @@ export function useSupabaseServices() {
   
   const useCreateMajoration = () => {
     return useMutation({
-      mutationFn: (data: any) => supabaseService.createMajoration(data),
+      mutationFn: (data: Omit<MajorationAct, 'id' | 'created_at' | 'updated_at'>) => 
+        supabaseService.createMajoration(data),
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['majorations'] });
         toast.success("Majoration créée avec succès");
       },
-      onError: (error) => {
+      onError: (error: any) => {
         toast.error("Erreur lors de la création de la majoration");
         console.error("Error creating majoration:", error);
       }
@@ -107,14 +114,14 @@ export function useSupabaseServices() {
   
   const useUpdateMajoration = () => {
     return useMutation({
-      mutationFn: ({ id, data }: { id: string, data: any }) => 
+      mutationFn: ({ id, data }: { id: string, data: Partial<MajorationAct> }) => 
         supabaseService.updateMajoration(id, data),
       onSuccess: (_, variables) => {
         queryClient.invalidateQueries({ queryKey: ['majorations'] });
         queryClient.invalidateQueries({ queryKey: ['majoration', variables.id] });
         toast.success("Majoration mise à jour avec succès");
       },
-      onError: (error) => {
+      onError: (error: any) => {
         toast.error("Erreur lors de la mise à jour de la majoration");
         console.error("Error updating majoration:", error);
       }
@@ -128,7 +135,7 @@ export function useSupabaseServices() {
         queryClient.invalidateQueries({ queryKey: ['majorations'] });
         toast.success("Majoration supprimée avec succès");
       },
-      onError: (error) => {
+      onError: (error: any) => {
         toast.error("Erreur lors de la suppression de la majoration");
         console.error("Error deleting majoration:", error);
       }

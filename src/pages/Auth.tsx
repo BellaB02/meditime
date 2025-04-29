@@ -1,4 +1,5 @@
-import { useState, useContext, useEffect } from "react";
+
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { AuthContext } from "../App";
+import { useAuth } from "@/contexts/AuthContext";
 import { TemporaryAccessService } from "@/services/TemporaryAccessService";
 
 // Schéma de validation pour le formulaire de connexion
@@ -39,7 +40,7 @@ const Auth = () => {
   const [activeTab, setActiveTab] = useState("login");
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useContext(AuthContext);
+  const { signIn, signUp, user } = useAuth();
   const [invitationToken, setInvitationToken] = useState<string | null>(null);
   const [invitationData, setInvitationData] = useState<any>(null);
 
@@ -66,6 +67,13 @@ const Auth = () => {
       socialSecurityNumber: "",
     },
   });
+  
+  // Rediriger si l'utilisateur est déjà connecté
+  useEffect(() => {
+    if (user) {
+      navigate("/");
+    }
+  }, [user, navigate]);
 
   // Vérifier si un token d'invitation est présent dans l'URL
   useEffect(() => {
@@ -91,40 +99,39 @@ const Auth = () => {
         toast.error("Le lien d'invitation est invalide ou a expiré.");
       }
     }
-  }, [location.search]);
+  }, [location.search, registerForm]);
 
   // Gestion de la connexion
-  const handleLogin = (data: z.infer<typeof loginFormSchema>) => {
-    console.log("Connexion avec:", data);
-    
-    // Simulation d'une connexion réussie
-    login(data.userType);
-    toast.success(`Connexion réussie en tant que ${data.userType}`);
-    
-    // Redirection vers la page appropriée
-    if (data.userType === "soignant") {
-      navigate("/");
-    } else {
-      navigate("/patient-dashboard");
+  const handleLogin = async (data: z.infer<typeof loginFormSchema>) => {
+    try {
+      await signIn(data.email, data.password);
+      
+      // La redirection se fera automatiquement grâce à notre effet ci-dessus
+    } catch (error) {
+      // L'erreur est déjà gérée dans le contexte d'authentification
     }
   };
 
   // Gestion de l'inscription
-  const handleRegister = (data: z.infer<typeof registerFormSchema>) => {
-    console.log("Inscription avec:", data);
-    
-    // Simulation d'une inscription réussie
-    toast.success(`Compte créé pour ${data.firstName} ${data.lastName}`);
-    
-    // Redirection ou connexion automatique
-    setActiveTab("login");
-    loginForm.setValue("email", data.email);
-    loginForm.setValue("userType", data.userType);
-    
-    // Simuler une attente pour montrer un toast de confirmation
-    setTimeout(() => {
-      toast.info("Veuillez vous connecter avec vos identifiants");
-    }, 1000);
+  const handleRegister = async (data: z.infer<typeof registerFormSchema>) => {
+    try {
+      await signUp(data.email, data.password, {
+        firstName: data.firstName,
+        lastName: data.lastName
+      });
+      
+      // Redirection ou connexion automatique
+      setActiveTab("login");
+      loginForm.setValue("email", data.email);
+      loginForm.setValue("userType", data.userType);
+      
+      // Simuler une attente pour montrer un toast de confirmation
+      setTimeout(() => {
+        toast.info("Veuillez vous connecter avec vos identifiants");
+      }, 1000);
+    } catch (error) {
+      // L'erreur est déjà gérée dans le contexte d'authentification
+    }
   };
 
   return (
