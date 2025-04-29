@@ -72,7 +72,7 @@ export default function Practice() {
         </div>
       </div>
 
-      <Tabs defaultValue="info" value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="info">Informations</TabsTrigger>
           <TabsTrigger value="members">Membres</TabsTrigger>

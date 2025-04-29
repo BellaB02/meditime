@@ -130,110 +130,170 @@ const Auth = () => {
             </Tabs>
           </CardHeader>
           <CardContent>
-            <TabsContent value="login" className="mt-0">
-              <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
-                  <FormField
-                    control={loginForm.control}
-                    name="userType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            variant={field.value === "soignant" ? "default" : "outline"}
-                            className="w-full"
-                            onClick={() => field.onChange("soignant")}
-                          >
-                            Soignant
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={field.value === "patient" ? "default" : "outline"}
-                            className="w-full"
-                            onClick={() => field.onChange("patient")}
-                          >
-                            Patient
-                          </Button>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={loginForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input placeholder="exemple@email.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={loginForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Mot de passe</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button type="submit" className="w-full">
-                    Se connecter
-                  </Button>
-                </form>
-              </Form>
-            </TabsContent>
-
-            <TabsContent value="register" className="mt-0">
-              <Form {...registerForm}>
-                <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
-                  <FormField
-                    control={registerForm.control}
-                    name="userType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            variant={field.value === "soignant" ? "default" : "outline"}
-                            className="w-full"
-                            onClick={() => field.onChange("soignant")}
-                          >
-                            Soignant
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={field.value === "patient" ? "default" : "outline"}
-                            className="w-full"
-                            onClick={() => field.onChange("patient")}
-                          >
-                            Patient
-                          </Button>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsContent value="login" className="mt-0">
+                <Form {...loginForm}>
+                  <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
                     <FormField
-                      control={registerForm.control}
-                      name="firstName"
+                      control={loginForm.control}
+                      name="userType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Prénom</FormLabel>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              type="button"
+                              variant={field.value === "soignant" ? "default" : "outline"}
+                              className="w-full"
+                              onClick={() => field.onChange("soignant")}
+                            >
+                              Soignant
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={field.value === "patient" ? "default" : "outline"}
+                              className="w-full"
+                              onClick={() => field.onChange("patient")}
+                            >
+                              Patient
+                            </Button>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={loginForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input placeholder="exemple@email.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={loginForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Mot de passe</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <Button type="submit" className="w-full">
+                      Se connecter
+                    </Button>
+                  </form>
+                </Form>
+              </TabsContent>
+
+              <TabsContent value="register" className="mt-0">
+                <Form {...registerForm}>
+                  <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
+                    <FormField
+                      control={registerForm.control}
+                      name="userType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              type="button"
+                              variant={field.value === "soignant" ? "default" : "outline"}
+                              className="w-full"
+                              onClick={() => field.onChange("soignant")}
+                            >
+                              Soignant
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={field.value === "patient" ? "default" : "outline"}
+                              className="w-full"
+                              onClick={() => field.onChange("patient")}
+                            >
+                              Patient
+                            </Button>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={registerForm.control}
+                        name="firstName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Prénom</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={registerForm.control}
+                        name="lastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nom</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={registerForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input type="email" placeholder="exemple@email.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {registerForm.watch("userType") === "patient" && (
+                      <FormField
+                        control={registerForm.control}
+                        name="socialSecurityNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Numéro de sécurité sociale</FormLabel>
+                            <FormControl>
+                              <Input placeholder="X XX XX XX XXX XXX XX" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    <FormField
+                      control={registerForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Mot de passe</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -242,83 +302,25 @@ const Auth = () => {
 
                     <FormField
                       control={registerForm.control}
-                      name="lastName"
+                      name="confirmPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Nom</FormLabel>
+                          <FormLabel>Confirmer le mot de passe</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input type="password" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  </div>
 
-                  <FormField
-                    control={registerForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="exemple@email.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {registerForm.watch("userType") === "patient" && (
-                    <FormField
-                      control={registerForm.control}
-                      name="socialSecurityNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Numéro de sécurité sociale</FormLabel>
-                          <FormControl>
-                            <Input placeholder="X XX XX XX XXX XXX XX" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
-                  <FormField
-                    control={registerForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Mot de passe</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={registerForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirmer le mot de passe</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button type="submit" className="w-full">
-                    Créer un compte
-                  </Button>
-                </form>
-              </Form>
-            </TabsContent>
+                    <Button type="submit" className="w-full">
+                      Créer un compte
+                    </Button>
+                  </form>
+                </Form>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>
