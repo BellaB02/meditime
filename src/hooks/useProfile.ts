@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { useProfilesService } from './useProfilesService';
 
 interface Profile {
   id: string;
@@ -15,6 +16,8 @@ export function useProfile() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const { useUpdateProfile } = useProfilesService();
+  const updateProfileMutation = useUpdateProfile();
 
   useEffect(() => {
     if (!user) {
@@ -27,19 +30,13 @@ export function useProfile() {
       try {
         setLoading(true);
         
-        // Use a typesafe approach for RPC calls
-        const { data, error } = await supabase.functions.invoke('get-profile', {
-          body: { user_id: user.id }
-        });
+        const { data, error } = await fetch('/api/profiles');
+        
+        const { profilesService } = await import('@/integrations/supabase/services');
+        const profileData = await profilesService.getProfile(user.id);
 
-        if (error) {
-          console.error('Erreur lors du chargement du profil:', error.message);
-          setLoading(false);
-          return;
-        }
-
-        if (data) {
-          setProfile(data as Profile);
+        if (profileData) {
+          setProfile(profileData as Profile);
         }
       } catch (error: any) {
         console.error('Erreur lors du chargement du profil:', error.message);
@@ -55,29 +52,16 @@ export function useProfile() {
     if (!user) return;
 
     try {
-      // Use a typesafe approach for RPC calls
-      const { error } = await supabase.functions.invoke('update-profile', {
-        body: { 
-          user_id: user.id,
-          profile_data: updates 
-        }
+      await updateProfileMutation.mutateAsync({
+        userId: user.id,
+        data: updates
       });
 
-      if (error) {
-        throw error;
-      }
-
-      // Fetch the updated profile
-      const { data, error: fetchError } = await supabase.functions.invoke('get-profile', {
-        body: { user_id: user.id }
-      });
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      if (data) {
-        setProfile(data as Profile);
+      const { profilesService } = await import('@/integrations/supabase/services');
+      const updatedProfile = await profilesService.getProfile(user.id);
+      
+      if (updatedProfile) {
+        setProfile(updatedProfile as Profile);
       }
       
       toast.success('Profil mis à jour avec succès');
