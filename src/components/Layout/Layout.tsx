@@ -7,6 +7,7 @@ import { useSidebar } from './SidebarProvider';
 import { MobileNav } from './MobileNav';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEffect, useState } from 'react';
+import OfflineIndicator from './OfflineIndicator';
 
 const getTitleFromPath = (pathname: string): string => {
   switch (pathname) {
@@ -79,6 +80,9 @@ const Layout = () => {
         
         {/* Navigation mobile */}
         <MobileNav />
+        
+        {/* Offline mode indicator */}
+        <OfflineIndicator />
       </main>
     </div>
   );
