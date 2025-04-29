@@ -11,7 +11,9 @@ import VitalSignsTab from "@/components/patient/VitalSignsTab";
 import VisitsTab from "@/components/patient/VisitsTab";
 import PrescriptionsTab from "@/components/patient/PrescriptionsTab";
 import EditPatientDialog from "@/components/patient/dialogs/EditPatientDialog";
+import { AddAppointmentDialog } from "@/components/Calendar/AddAppointmentDialog";
 import { toast } from "sonner";
+import { useAppointments } from "@/hooks/useAppointments";
 
 const PatientFile = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +21,10 @@ const PatientFile = () => {
 
   // État pour l'onglet actif
   const [activeTab, setActiveTab] = useState("info");
+  const [isAddAppointmentOpen, setIsAddAppointmentOpen] = useState(false);
+  
+  // Hook pour les rendez-vous
+  const { addAppointment } = useAppointments();
   
   // Utilisation du hook personnalisé pour gérer les données patient
   const {
@@ -37,9 +43,12 @@ const PatientFile = () => {
     handleCancelEdit
   } = usePatientData(id);
   
-  const handleAddAppointment = () => {
+  const handleAddAppointment = (appointment: any) => {
     if (patientInfo) {
+      addAppointment(appointment);
       toast.success(`Rendez-vous ajouté pour ${patientInfo.firstName} ${patientInfo.name}`);
+      // Rediriger vers le calendrier
+      navigate("/calendar");
     }
   };
   
@@ -77,8 +86,8 @@ const PatientFile = () => {
           </h1>
           <p className="text-sm text-muted-foreground">Dossier patient</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleAddAppointment}>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setIsAddAppointmentOpen(true)}>
             <Calendar className="mr-2 h-4 w-4" />
             Ajouter RDV
           </Button>
@@ -146,6 +155,14 @@ const PatientFile = () => {
           setIsEditingPatient(true);
           setIsEditModeDialogOpen(false);
         }}
+      />
+      
+      {/* Dialog pour ajouter un rendez-vous */}
+      <AddAppointmentDialog 
+        isOpen={isAddAppointmentOpen}
+        onClose={() => setIsAddAppointmentOpen(false)}
+        onAddAppointment={handleAddAppointment}
+        patientId={id}
       />
     </div>
   );

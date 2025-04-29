@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Check, X, RotateCcw } from "lucide-react";
+import { Calendar, Clock, Check, X, RotateCcw, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { DocumentService } from "@/services/DocumentService";
 import { PatientInfo } from "@/services/PatientService";
@@ -55,7 +55,17 @@ const VisitsTab: React.FC<VisitsTabProps> = ({ visits, patientInfo }) => {
     
     // Générer une feuille de soins uniquement si le soin est marqué comme terminé
     if (newStatus === 'completed' && patientInfo) {
-      DocumentService.generateCareSheet("care-" + Date.now(), `${patientInfo.firstName} ${patientInfo.name}`);
+      DocumentService.generateCareSheet("care-" + Date.now(), `${patientInfo.firstName} ${patientInfo.name}`, patientInfo.id);
+    }
+  };
+
+  const handleDownloadCareSheet = (visit: Visit) => {
+    if (patientInfo) {
+      DocumentService.downloadDocument('careSheet', patientInfo.id, {
+        type: visit.care,
+        date: visit.date
+      }, true);
+      toast.success(`Feuille de soins téléchargée pour ${patientInfo.firstName} ${patientInfo.name}`);
     }
   };
 
@@ -67,6 +77,7 @@ const VisitsTab: React.FC<VisitsTabProps> = ({ visits, patientInfo }) => {
           isOpen={isAddVisitDialogOpen} 
           onOpenChange={setIsAddVisitDialogOpen}
           patientName={patientInfo.name}
+          patientId={patientInfo.id}
           onAddVisit={handleAddVisit}
         />
       </CardHeader>
@@ -116,7 +127,7 @@ const VisitsTab: React.FC<VisitsTabProps> = ({ visits, patientInfo }) => {
                 <div className="mt-2 bg-accent/50 p-3 rounded-md">
                   <p className="text-sm">{visit.notes}</p>
                 </div>
-                <div className="mt-3 flex justify-end gap-2">
+                <div className="mt-3 flex flex-wrap justify-end gap-2">
                   {visit.status === 'pending' && (
                     <>
                       <Button 
@@ -137,6 +148,17 @@ const VisitsTab: React.FC<VisitsTabProps> = ({ visits, patientInfo }) => {
                         Annuler
                       </Button>
                     </>
+                  )}
+                  
+                  {visit.status === 'completed' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDownloadCareSheet(visit)}
+                    >
+                      <FileText className="mr-2 h-3 w-3" />
+                      Feuille de soins
+                    </Button>
                   )}
                   
                   {(visit.status === 'completed' || visit.status === 'cancelled') && (

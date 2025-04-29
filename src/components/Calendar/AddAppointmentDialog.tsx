@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,18 +10,23 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { PatientInfo, PatientService } from "@/services/PatientService";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Check, ChevronsUpDown, User } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface AddAppointmentDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onAddAppointment: (appointment: Appointment) => void;
+  patientId?: string;
 }
 
 const appointmentFormSchema = z.object({
   date: z.string().nonempty({ message: "La date est requise" }),
   time: z.string().nonempty({ message: "L'heure est requise" }),
-  patientName: z.string().nonempty({ message: "Le nom du patient est requis" }),
-  patientAddress: z.string(),
+  patientId: z.string().nonempty({ message: "Le patient est requis" }),
   care: z.string().nonempty({ message: "Le type de soin est requis" })
 });
 
@@ -30,29 +35,55 @@ type AppointmentFormValues = z.infer<typeof appointmentFormSchema>;
 export const AddAppointmentDialog = ({
   isOpen,
   onClose,
-  onAddAppointment
+  onAddAppointment,
+  patientId
 }: AddAppointmentDialogProps) => {
+  const [patients, setPatients] = useState<PatientInfo[]>([]);
+  const [open, setOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<PatientInfo | null>(null);
+  
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentFormSchema),
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       time: "09:00",
-      patientName: "",
-      patientAddress: "",
+      patientId: patientId || "",
       care: ""
     }
   });
+  
+  // Charger les patients
+  useEffect(() => {
+    const allPatients = PatientService.getAllPatients();
+    setPatients(allPatients);
+    
+    // Si un ID patient est fourni, sélectionner ce patient
+    if (patientId) {
+      const patient = allPatients.find(p => p.id === patientId);
+      if (patient) {
+        setSelectedPatient(patient);
+        form.setValue("patientId", patientId);
+      }
+    }
+  }, [patientId, form]);
 
   const onSubmit = (data: AppointmentFormValues) => {
     try {
+      const patient = patients.find(p => p.id === data.patientId);
+      
+      if (!patient) {
+        toast.error("Patient non trouvé");
+        return;
+      }
+      
       const newAppointment: Appointment = {
         id: `app-${Date.now()}`,
         date: new Date(data.date),
         time: data.time,
         patient: {
-          id: `p-${Date.now()}`,
-          name: data.patientName,
-          address: data.patientAddress,
+          id: patient.id,
+          name: `${patient.firstName || ''} ${patient.name}`.trim(),
+          address: patient.address || "Adresse non spécifiée",
           care: data.care
         }
       };
@@ -62,6 +93,7 @@ export const AddAppointmentDialog = ({
       // Réinitialiser le formulaire et fermer le dialogue
       form.reset();
       onClose();
+      toast.success(`Rendez-vous ajouté avec succès pour ${patient.firstName} ${patient.name}`);
     } catch (error) {
       toast.error("Erreur lors de l'ajout du rendez-vous");
       console.error("Error adding appointment:", error);
@@ -115,33 +147,63 @@ export const AddAppointmentDialog = ({
             
             <FormField
               control={form.control}
-              name="patientName"
+              name="patientId"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nom du patient</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Jean Dupont"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="patientAddress"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Adresse</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="15 Rue de Paris, 75001 Paris"
-                      {...field}
-                    />
-                  </FormControl>
+                <FormItem className="flex flex-col">
+                  <FormLabel>Patient</FormLabel>
+                  <Popover open={open} onOpenChange={setOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={open}
+                          className={cn(
+                            "w-full justify-between",
+                            !field.value && "text-muted-foreground"
+                          )}
+                          disabled={!!patientId}
+                        >
+                          {field.value && selectedPatient
+                            ? `${selectedPatient.firstName || ''} ${selectedPatient.name}`.trim()
+                            : "Sélectionner un patient"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                      <Command>
+                        <CommandInput placeholder="Rechercher un patient..." />
+                        <CommandEmpty>Aucun patient trouvé.</CommandEmpty>
+                        <CommandList>
+                          <CommandGroup>
+                            {patients.map((patient) => (
+                              <CommandItem
+                                key={patient.id}
+                                value={`${patient.firstName || ''} ${patient.name}`.trim().toLowerCase()}
+                                onSelect={() => {
+                                  form.setValue("patientId", patient.id);
+                                  setSelectedPatient(patient);
+                                  setOpen(false);
+                                }}
+                              >
+                                <User className="mr-2 h-4 w-4" />
+                                <span>{`${patient.firstName || ''} ${patient.name}`.trim()}</span>
+                                <Check
+                                  className={cn(
+                                    "ml-auto h-4 w-4",
+                                    field.value === patient.id
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}

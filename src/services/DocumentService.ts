@@ -46,7 +46,7 @@ export const DocumentService = {
         
         if (patientInfo) {
           // Notification détaillée
-          toast.success(`Feuille de soins générée et téléchargée pour ${patientInfo.name}`, {
+          toast.success(`Feuille de soins générée et téléchargée pour ${patientInfo.firstName} ${patientInfo.name}`, {
             description: `Le document a été pré-rempli avec toutes les informations patient et soins`,
             duration: 5000
           });
@@ -83,7 +83,7 @@ export const DocumentService = {
         // Notification explicite des informations pré-remplies
         toast.info(`Feuille de soins pré-remplie avec les données suivantes:`, {
           description: `
-            Patient: ${patientInfo.name}
+            Patient: ${patientInfo.firstName || ''} ${patientInfo.name}
             Adresse: ${patientInfo.address || 'Non renseignée'}
             Numéro SS: ${patientInfo.socialSecurityNumber || 'Non renseigné'}
             Type de soin: ${careInfo?.type || 'Non spécifié'}
@@ -124,7 +124,7 @@ export const DocumentService = {
           const patientInfo = PatientService.getPatientInfo(patientId);
           
           if (patientInfo) {
-            toast.success(`Feuille de soins pré-remplie prête pour impression pour ${patientInfo.name}`);
+            toast.success(`Feuille de soins pré-remplie prête pour impression pour ${patientInfo.firstName} ${patientInfo.name}`);
           }
           
           return true;
@@ -138,7 +138,7 @@ export const DocumentService = {
       const patientInfo = PatientService.getPatientInfo(patientId);
       if (patientInfo) {
         // Notification détaillée des informations utilisées
-        toast.info(`Document pré-rempli pour impression avec les données de ${patientInfo.name}`, {
+        toast.info(`Document pré-rempli pour impression avec les données de ${patientInfo.firstName} ${patientInfo.name}`, {
           description: `
             Adresse: ${patientInfo.address || 'Non renseignée'}
             Numéro SS: ${patientInfo.socialSecurityNumber || 'Non renseigné'}
@@ -200,7 +200,7 @@ export const DocumentService = {
     
     // Notification plus détaillée des informations utilisées pour la feuille de soins
     if (patientInfo) {
-      toast.success(`Feuille de soins générée pour ${patientName}`, {
+      toast.success(`Feuille de soins générée pour ${patientInfo.firstName || ''} ${patientInfo.name}`, {
         description: `Avec informations complètes: adresse, n° sécurité sociale, etc.`,
         duration: 4000
       });

@@ -1,6 +1,6 @@
 
 import { Card } from "@/components/ui/card";
-import { Clock, User, MapPin, CheckCircle } from "lucide-react";
+import { Clock, User, MapPin, CheckCircle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -39,9 +39,20 @@ const AppointmentList = ({ title, appointments = [], onAppointmentComplete }: Ap
     // Générer une feuille de soins
     const appointment = appointments.find(app => app.id === appointmentId);
     if (appointment) {
-      DocumentService.generateCareSheet(appointmentId, appointment.patient.name);
+      DocumentService.generateCareSheet(appointmentId, appointment.patient.name, appointment.patient.id);
       toast.success(`Soin marqué comme terminé pour ${appointment.patient.name}`);
       toast.success("Feuille de soins générée avec succès");
+    }
+  };
+
+  const handleDownloadCareSheet = (appointmentId: string) => {
+    const appointment = appointments.find(app => app.id === appointmentId);
+    if (appointment) {
+      DocumentService.downloadDocument('careSheet', appointment.patient.id, {
+        type: appointment.patient.care,
+        date: new Date().toLocaleDateString('fr-FR')
+      }, true);
+      toast.success(`Feuille de soins téléchargée pour ${appointment.patient.name}`);
     }
   };
 
@@ -86,31 +97,46 @@ const AppointmentList = ({ title, appointments = [], onAppointmentComplete }: Ap
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {!isAppointmentCompleted(appointment.id) ? (
                   <Button 
                     variant="outline" 
                     size="sm"
                     onClick={() => handleMarkAsCompleted(appointment.id)}
+                    className="w-full sm:w-auto"
                   >
+                    <CheckCircle size={16} className="mr-1" />
                     Marquer terminé
                   </Button>
                 ) : (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="bg-green-50 text-green-600 border-green-200"
-                    disabled
-                  >
-                    <CheckCircle size={16} className="mr-1" />
-                    Terminé
-                  </Button>
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="bg-green-50 text-green-600 border-green-200 w-full sm:w-auto"
+                      disabled
+                    >
+                      <CheckCircle size={16} className="mr-1" />
+                      Terminé
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadCareSheet(appointment.id)}
+                      className="w-full sm:w-auto"
+                    >
+                      <FileText size={16} className="mr-1" />
+                      Feuille de soins
+                    </Button>
+                  </>
                 )}
                 
                 <Button 
                   variant="outline" 
                   size="sm"
                   asChild
+                  className="w-full sm:w-auto"
                 >
                   <a href={`/patients/${appointment.patient.id}`}>
                     Voir fiche

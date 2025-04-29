@@ -2,8 +2,9 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, User, Clock, Check } from "lucide-react";
+import { MapPin, User, Clock, Check, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { DocumentService } from "@/services/DocumentService";
 
 export interface Appointment {
   id: string;
@@ -51,6 +52,14 @@ export const AppointmentCard = ({ appointment, onMarkAsCompleted }: AppointmentC
     toast.info(`Navigation vers : ${appointment.patient.address}`);
   };
   
+  const handleDownloadCareSheet = () => {
+    DocumentService.downloadDocument('careSheet', appointment.patient.id, {
+      type: appointment.patient.care,
+      date: appointment.date.toLocaleDateString('fr-FR')
+    }, true);
+    toast.success(`Feuille de soins téléchargée pour ${appointment.patient.name}`);
+  };
+  
   return (
     <Card>
       <CardContent className="p-4">
@@ -81,18 +90,31 @@ export const AppointmentCard = ({ appointment, onMarkAsCompleted }: AppointmentC
             </div>
           </div>
           
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-end flex-wrap gap-2">
             {appointment.completed ? (
-              <Button variant="outline" className="bg-green-50 text-green-600 border-green-200" disabled>
-                <Check size={16} className="mr-2" />
-                Terminé
-              </Button>
+              <>
+                <Button variant="outline" className="bg-green-50 text-green-600 border-green-200" disabled>
+                  <Check size={16} className="mr-2" />
+                  Terminé
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={handleDownloadCareSheet}
+                >
+                  <FileText size={16} className="mr-2" />
+                  Feuille de soins
+                </Button>
+              </>
             ) : (
               <Button 
                 variant="outline"
                 onClick={handleMarkAsCompleted}
                 disabled={isLoading}
               >
+                {isLoading ? 
+                  <span className="animate-spin mr-2">◌</span> : 
+                  <Check size={16} className="mr-2" />
+                }
                 Marquer terminé
               </Button>
             )}
