@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import Sidebar from './Sidebar';
 import { Header } from './Header';
 import { useSidebar } from './SidebarProvider';
+import { MobileNav } from './MobileNav';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const getTitleFromPath = (pathname: string): string => {
   switch (pathname) {
@@ -40,18 +42,25 @@ const Layout = () => {
   const { isOpen } = useSidebar();
   const location = useLocation();
   const title = getTitleFromPath(location.pathname);
+  const isMobile = useIsMobile();
 
   return (
     <div className="min-h-screen flex w-full">
+      {/* Sidebar pour desktop */}
       <Sidebar />
+      
       <main className={cn(
         'flex-1 transition-all duration-300',
-        isOpen ? 'ml-64' : 'ml-[70px]'
+        isOpen ? 'ml-64' : 'ml-[70px]',
+        isMobile && 'ml-0'
       )}>
         <Header />
-        <div className="p-6">
+        <div className="p-4 sm:p-6 pb-20 md:pb-6">
           <Outlet />
         </div>
+        
+        {/* Navigation mobile */}
+        <MobileNav />
       </main>
     </div>
   );

@@ -54,9 +54,6 @@ export function Header() {
   
   const handleProfileClick = () => {
     navigate('/settings');
-    if (isMobile) {
-      toggleSidebar();
-    }
   };
 
   // Obtenir les initiales du nom de l'utilisateur
@@ -73,11 +70,13 @@ export function Header() {
   return (
     <header className="h-16 px-4 border-b flex items-center justify-between bg-background shadow-sm">
       <div className="flex items-center gap-2 lg:gap-4 w-full">
-        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden">
-          <Menu className="h-6 w-6" />
-          <span className="sr-only">Menu</span>
-        </Button>
-        <div className="hidden md:flex items-center">
+        {!isMobile && (
+          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden">
+            <Menu className="h-6 w-6" />
+            <span className="sr-only">Menu</span>
+          </Button>
+        )}
+        <div className="flex items-center">
           <img 
             src="/lovable-uploads/f32c5bf3-0b98-449e-8874-7a5665e67228.png" 
             alt="Meditime Logo" 

@@ -12,12 +12,16 @@ const Sidebar = () => {
   const { isOpen } = useSidebar();
   const isMobile = useIsMobile();
   
+  // Ne pas rendre le sidebar sur mobile
+  if (isMobile) {
+    return null;
+  }
+  
   return (
     <aside 
       className={cn(
         'fixed left-0 top-0 z-20 h-full bg-sidebar transition-all duration-300 border-r border-sidebar-border',
-        isOpen ? 'w-64' : 'w-[70px]',
-        isMobile && !isOpen ? 'w-0' : ''
+        isOpen ? 'w-64' : 'w-[70px]'
       )}
     >
       <div className="flex items-center h-16 px-4 border-b border-sidebar-border">
