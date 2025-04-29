@@ -58,9 +58,27 @@ export const appointmentsService = {
   
   // Créer un nouveau rendez-vous
   createAppointment: async (appointment: Omit<Appointment, 'id' | 'created_at' | 'updated_at'>): Promise<Appointment> => {
+    // Nous nous assurons que les champs requis sont présents
+    if (!appointment.care_type || !appointment.date || !appointment.time) {
+      throw new Error('Missing required appointment fields: care_type, date, or time');
+    }
+    
     const { data, error } = await supabase
       .from('appointments')
-      .insert(appointment)
+      .insert({
+        patient_id: appointment.patient_id,
+        caregiver_id: appointment.caregiver_id,
+        date: appointment.date,
+        time: appointment.time,
+        care_type: appointment.care_type,
+        duration: appointment.duration,
+        location: appointment.location,
+        notes: appointment.notes,
+        is_recurring: appointment.is_recurring,
+        recurrence_pattern: appointment.recurrence_pattern,
+        care_protocol_id: appointment.care_protocol_id,
+        status: appointment.status || 'scheduled'
+      })
       .select()
       .single();
       
@@ -168,9 +186,20 @@ export const appointmentsService = {
   
   // Créer une nouvelle tournée
   createRound: async (round: Omit<Round, 'id' | 'created_at' | 'updated_at'>): Promise<Round> => {
+    // On vérifie que les champs requis sont présents
+    if (!round.name || !round.date) {
+      throw new Error('Missing required round fields: name or date');
+    }
+    
     const { data, error } = await supabase
       .from('rounds')
-      .insert(round)
+      .insert({
+        name: round.name,
+        date: round.date,
+        caregiver_id: round.caregiver_id,
+        status: round.status || 'planned',
+        notes: round.notes
+      })
       .select()
       .single();
       
@@ -184,9 +213,20 @@ export const appointmentsService = {
   
   // Ajouter un stop à une tournée
   addStopToRound: async (roundStop: Omit<RoundStop, 'id' | 'created_at' | 'updated_at'>): Promise<RoundStop> => {
+    // On vérifie que les champs requis sont présents
+    if (!roundStop.round_id || !roundStop.stop_order) {
+      throw new Error('Missing required round stop fields: round_id or stop_order');
+    }
+    
     const { data, error } = await supabase
       .from('round_stops')
-      .insert(roundStop)
+      .insert({
+        round_id: roundStop.round_id,
+        appointment_id: roundStop.appointment_id,
+        stop_order: roundStop.stop_order,
+        estimated_time: roundStop.estimated_time,
+        notes: roundStop.notes
+      })
       .select()
       .single();
       

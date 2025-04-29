@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { PatientInfo, PatientService, VitalSign, Prescription } from "@/services/PatientService";
+import { PatientInfo, PatientService, Prescription } from "@/services/PatientService";
 import { Visit } from "@/components/patient/VisitsTab";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -9,6 +9,7 @@ import { patientFormSchema, PatientFormValues } from "@/components/patient/Patie
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePatientsService } from "@/hooks/usePatientsService";
+import { VitalSign, Patient } from "@/integrations/supabase/services/types";
 
 export const usePatientData = (patientId?: string) => {
   const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
@@ -80,15 +81,15 @@ export const usePatientData = (patientId?: string) => {
         id: supabasePatient.id,
         name: supabasePatient.last_name,
         firstName: supabasePatient.first_name,
-        address: supabasePatient.address,
-        phoneNumber: supabasePatient.phone,
-        email: supabasePatient.email,
-        dateOfBirth: supabasePatient.date_of_birth,
-        doctor: supabasePatient.doctor,
-        insurance: supabasePatient.insurance,
-        medicalNotes: supabasePatient.medical_notes,
-        status: supabasePatient.status as "active" | "inactive" | "urgent",
-        socialSecurityNumber: supabasePatient.social_security_number
+        address: supabasePatient.address || '',
+        phoneNumber: supabasePatient.phone || '',
+        email: supabasePatient.email || '',
+        dateOfBirth: supabasePatient.date_of_birth || '',
+        doctor: supabasePatient.doctor || '',
+        insurance: supabasePatient.insurance || '',
+        medicalNotes: supabasePatient.medical_notes || '',
+        status: (supabasePatient.status as "active" | "inactive" | "urgent") || 'active',
+        socialSecurityNumber: supabasePatient.social_security_number || ''
       };
       
       setPatientInfo(patientData);
@@ -101,11 +102,18 @@ export const usePatientData = (patientId?: string) => {
     if (supabaseVitalSigns && supabaseVitalSigns.length > 0) {
       // Convert Supabase vital signs to legacy format
       const convertedVitalSigns: VitalSign[] = supabaseVitalSigns.map(sign => ({
-        date: new Date(sign.recorded_at).toLocaleDateString('fr-FR'),
-        temperature: `${sign.temperature}°C`,
-        heartRate: `${sign.heart_rate} bpm`,
-        bloodPressure: sign.blood_pressure,
-        notes: sign.notes || ""
+        id: sign.id,
+        patient_id: sign.patient_id || '',
+        recorded_at: sign.recorded_at || '',
+        temperature: sign.temperature,
+        heart_rate: sign.heart_rate,
+        blood_pressure: sign.blood_pressure || '',
+        blood_sugar: sign.blood_sugar,
+        oxygen_saturation: sign.oxygen_saturation,
+        pain_level: sign.pain_level,
+        notes: sign.notes || '',
+        recorded_by: sign.recorded_by,
+        created_at: sign.created_at
       }));
       
       setVitalSigns(convertedVitalSigns);

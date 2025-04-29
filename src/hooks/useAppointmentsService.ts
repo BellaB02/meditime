@@ -111,7 +111,7 @@ export function useAppointmentsService() {
   
   const useAddStopToRound = () => {
     return useMutation({
-      mutationFn: (roundStop: Omit<RoundStop, 'id' | 'created_at' | 'updated_at'>) => 
+      mutationFn: (roundStop: Omit<RoundStop, 'id' | 'created_at' | 'updated_at'> & { round_id: string }) => 
         appointmentsService.addStopToRound(roundStop),
       onSuccess: (_, variables) => {
         queryClient.invalidateQueries({ queryKey: ['round', variables.round_id] });

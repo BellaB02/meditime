@@ -1,6 +1,7 @@
 
 import { supabase } from '../client';
 import { CareProtocol } from './types';
+import { Json } from '../types';
 
 export const careProtocolsService = {
   // Récupérer tous les protocoles de soins
@@ -36,9 +37,19 @@ export const careProtocolsService = {
   
   // Créer un nouveau protocole de soins
   createCareProtocol: async (protocol: Omit<CareProtocol, 'id' | 'created_at' | 'updated_at'>): Promise<CareProtocol> => {
+    // Vérification des champs requis
+    if (!protocol.name) {
+      throw new Error('Missing required protocol field: name');
+    }
+    
     const { data, error } = await supabase
       .from('care_protocols')
-      .insert(protocol)
+      .insert({
+        name: protocol.name,
+        description: protocol.description,
+        steps: protocol.steps,
+        created_by: protocol.created_by
+      })
       .select()
       .single();
       

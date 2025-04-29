@@ -36,9 +36,29 @@ export const patientsService = {
   
   // Créer un nouveau patient
   createPatient: async (patient: Omit<Patient, 'id' | 'created_at' | 'updated_at'>): Promise<Patient> => {
+    // Vérifions que les champs requis sont présents
+    if (!patient.first_name || !patient.last_name) {
+      throw new Error('Missing required patient fields: first_name or last_name');
+    }
+    
     const { data, error } = await supabase
       .from('patients')
-      .insert(patient)
+      .insert({
+        first_name: patient.first_name,
+        last_name: patient.last_name,
+        date_of_birth: patient.date_of_birth,
+        address: patient.address,
+        city: patient.city,
+        postal_code: patient.postal_code,
+        phone: patient.phone,
+        email: patient.email,
+        doctor: patient.doctor,
+        insurance: patient.insurance,
+        medical_notes: patient.medical_notes,
+        social_security_number: patient.social_security_number,
+        status: patient.status || 'active',
+        user_id: patient.user_id
+      })
       .select()
       .single();
       
@@ -84,10 +104,21 @@ export const patientsService = {
   },
   
   // Ajouter des signes vitaux pour un patient
-  addVitalSign: async (vitalSign: Omit<VitalSign, 'id' | 'created_at'>): Promise<VitalSign> => {
+  addVitalSign: async (vitalSign: Omit<VitalSign, 'id' | 'created_at'> & { patient_id: string }): Promise<VitalSign> => {
     const { data, error } = await supabase
       .from('vital_signs')
-      .insert(vitalSign)
+      .insert({
+        patient_id: vitalSign.patient_id,
+        temperature: vitalSign.temperature,
+        heart_rate: vitalSign.heart_rate,
+        blood_pressure: vitalSign.blood_pressure,
+        blood_sugar: vitalSign.blood_sugar,
+        oxygen_saturation: vitalSign.oxygen_saturation,
+        pain_level: vitalSign.pain_level,
+        notes: vitalSign.notes,
+        recorded_at: vitalSign.recorded_at || new Date().toISOString(),
+        recorded_by: vitalSign.recorded_by
+      })
       .select()
       .single();
       

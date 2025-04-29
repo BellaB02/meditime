@@ -65,7 +65,7 @@ export function usePatientsService() {
   
   const useAddVitalSign = () => {
     return useMutation({
-      mutationFn: (vitalSign: Omit<VitalSign, 'id' | 'created_at'>) => 
+      mutationFn: (vitalSign: Omit<VitalSign, 'id' | 'created_at'> & { patient_id: string }) => 
         patientsService.addVitalSign(vitalSign),
       onSuccess: (_, variables) => {
         queryClient.invalidateQueries({ 
