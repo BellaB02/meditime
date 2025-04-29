@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,7 +34,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +44,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 // Types
 interface BillingItem {
@@ -54,6 +56,13 @@ interface BillingItem {
   care: string;
   status: "pending" | "submitted" | "paid" | "rejected";
   comment?: string;
+}
+
+interface NursingAct {
+  id: string;
+  code: string;
+  description: string;
+  rate: number;
 }
 
 // Données fictives
@@ -101,18 +110,6 @@ const billingData: BillingItem[] = [
   }
 ];
 
-// Données des actes infirmiers avec cotation NGAP
-const nursingActsData = [
-  { code: "AMI 1", description: "Prélèvement sanguin", rate: "3.15€" },
-  { code: "AMI 1.5", description: "Injection intraveineuse", rate: "4.73€" },
-  { code: "AMI 2", description: "Pansement simple", rate: "6.30€" },
-  { code: "AMI 3", description: "Pansement complexe", rate: "9.45€" },
-  { code: "AMI 4", description: "Perfusion", rate: "12.60€" },
-  { code: "AMI 5.8", description: "Séance de soins infirmiers", rate: "18.27€" },
-  { code: "BSI", description: "Bilan de soins infirmiers", rate: "25.20€" },
-  { code: "DSI", description: "Démarche de soins infirmiers", rate: "15.00€" }
-];
-
 // Données fictives pour les documents administratifs essentiels
 const adminDocuments = [
   {
@@ -157,6 +154,33 @@ const AdminTasks = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState("billing");
+  const [nursingActsData, setNursingActsData] = useState<NursingAct[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+  
+  // Charger les actes infirmiers depuis la base de données
+  useEffect(() => {
+    const fetchNursingActs = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('nursing_acts')
+          .select('*')
+          .eq('active', true)
+          .order('code');
+          
+        if (error) throw error;
+        setNursingActsData(data || []);
+      } catch (error) {
+        console.error('Erreur lors du chargement des actes infirmiers:', error);
+        toast.error("Erreur lors du chargement des données");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchNursingActs();
+  }, []);
   
   // Filtrer les factures
   const filteredBillings = billingData.filter(item => 
@@ -195,6 +219,22 @@ const AdminTasks = () => {
     return adminDocuments.filter(doc => doc.category === category);
   };
 
+  const handleDownloadBilling = (id: string) => {
+    toast.success(`Téléchargement de la facturation ${id}`);
+  };
+
+  const handlePrintBilling = (id: string) => {
+    toast.success(`Impression de la facturation ${id}`);
+  };
+
+  const handleDownloadDocument = (title: string) => {
+    toast.success(`Téléchargement du document: ${title}`);
+  };
+
+  const handleNewBilling = () => {
+    navigate("/admin/billing");
+  };
+
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -202,84 +242,10 @@ const AdminTasks = () => {
           <h1 className="text-2xl font-bold">Gestion Administrative</h1>
           <p className="text-muted-foreground">Gérez vos facturations et documents administratifs</p>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <FilePlus className="mr-2 h-4 w-4" />
-              Nouvelle facturation
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Créer une nouvelle facturation</DialogTitle>
-              <DialogDescription>
-                Complétez les informations pour générer une nouvelle facturation.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="patient" className="text-right">
-                  Patient
-                </label>
-                <div className="col-span-3">
-                  <select 
-                    id="patient" 
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Sélectionner un patient</option>
-                    <option value="jean">Jean Dupont</option>
-                    <option value="marie">Marie Martin</option>
-                    <option value="robert">Robert Petit</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="acts" className="text-right">
-                  Actes effectués
-                </label>
-                <div className="col-span-3">
-                  <select 
-                    id="acts" 
-                    multiple 
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm h-32"
-                  >
-                    {nursingActsData.map((act) => (
-                      <option key={act.code} value={act.code}>
-                        {act.code} - {act.description} ({act.rate})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="majoration" className="text-right">
-                  Majorations
-                </label>
-                <div className="col-span-3">
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" id="nuit" className="rounded border-input" />
-                    <label htmlFor="nuit">Nuit (+9.15€)</label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" id="dimanche" className="rounded border-input" />
-                    <label htmlFor="dimanche">Dimanche/Férié (+8.50€)</label>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="date" className="text-right">
-                  Date des soins
-                </label>
-                <div className="col-span-3">
-                  <Input type="date" id="date" />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit">Générer la facturation</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={handleNewBilling}>
+          <FilePlus className="mr-2 h-4 w-4" />
+          Nouvelle facturation
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -416,11 +382,19 @@ const AdminTasks = () => {
                       <TableCell>{getStatusBadge(item.status)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDownloadBilling(item.id)}
+                          >
                             <Download size={16} className="mr-2" />
                             Télécharger
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handlePrintBilling(item.id)}
+                          >
                             <Printer size={16} />
                           </Button>
                         </div>
@@ -463,7 +437,12 @@ const AdminTasks = () => {
                       <p className="text-sm text-muted-foreground mb-4 flex-grow">
                         {doc.description}
                       </p>
-                      <Button variant="outline" size="sm" className="w-full">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => handleDownloadDocument(doc.title)}
+                      >
                         <Download className="mr-2 h-4 w-4" />
                         Télécharger
                       </Button>
@@ -477,8 +456,15 @@ const AdminTasks = () => {
 
         <TabsContent value="cotation" className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Guide de cotation NGAP</CardTitle>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate("/settings")}
+              >
+                Gérer les tarifs
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -493,30 +479,47 @@ const AdminTasks = () => {
                   </div>
                 </div>
                 
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Tarif</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {nursingActsData.map((act) => (
-                      <TableRow key={act.code}>
-                        <TableCell className="font-medium">{act.code}</TableCell>
-                        <TableCell>{act.description}</TableCell>
-                        <TableCell>{act.rate}</TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm">
-                            Plus d'informations
-                          </Button>
-                        </TableCell>
+                {isLoading ? (
+                  <div className="py-8 text-center">
+                    <p>Chargement des actes infirmiers...</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Code</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Tarif</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {nursingActsData.map((act) => (
+                        <TableRow key={act.id}>
+                          <TableCell className="font-medium">{act.code}</TableCell>
+                          <TableCell>{act.description}</TableCell>
+                          <TableCell>{act.rate.toFixed(2)}€</TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => toast.info(`Informations sur l'acte: ${act.code}`)}
+                            >
+                              Plus d'informations
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {nursingActsData.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center">
+                            Aucun acte trouvé
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
               </div>
               
               <div className="mt-8 p-4 bg-muted rounded-lg">
