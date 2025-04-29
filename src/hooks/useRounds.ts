@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Round, RoundStop } from "@/types/rounds";
 import { toast } from "sonner";
@@ -79,6 +78,7 @@ export const useRounds = () => {
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [showCompleteAnimation, setShowCompleteAnimation] = useState(false);
   const [showStartAnimation, setShowStartAnimation] = useState(false);
+  const [showCarParkingAnimation, setShowCarParkingAnimation] = useState(false);
   const [isCreateRoundDialogOpen, setIsCreateRoundDialogOpen] = useState(false);
   const [isEditRoundDialogOpen, setIsEditRoundDialogOpen] = useState(false);
   const [currentRound, setCurrentRound] = useState<Round | null>(null);
@@ -163,8 +163,20 @@ export const useRounds = () => {
       )
     );
     
-    setShowCompleteAnimation(true);
+    // Show the car parking animation
+    setShowCarParkingAnimation(true);
+    
     toast.success("Tournée terminée avec succès");
+  };
+  
+  // Handle car parking animation completion
+  const handleCarParkingAnimationComplete = () => {
+    setShowCarParkingAnimation(false);
+    setShowCompleteAnimation(true);
+    
+    setTimeout(() => {
+      setShowCompleteAnimation(false);
+    }, 5000);
   };
   
   // Navigate to a patient's address
@@ -217,16 +229,19 @@ export const useRounds = () => {
     currentRound,
     showCompleteAnimation,
     showStartAnimation,
+    showCarParkingAnimation,
     isCreateRoundDialogOpen,
     isEditRoundDialogOpen,
     setShowCompleteAnimation,
     setShowStartAnimation,
+    setShowCarParkingAnimation,
     setIsCreateRoundDialogOpen,
     setIsEditRoundDialogOpen,
     handleStartRound,
     handleCompleteStop,
     handleReactivateStop,
     handleCompleteRound,
+    handleCarParkingAnimationComplete,
     handleNavigateToAddress,
     handleCreateRound,
     handleUpdateRound,

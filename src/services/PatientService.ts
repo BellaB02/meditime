@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 export interface PatientInfo {
@@ -13,6 +12,7 @@ export interface PatientInfo {
   doctor?: string;
   medicalNotes?: string;
   insurance?: string;
+  status?: "active" | "inactive" | "urgent";
 }
 
 export interface VitalSign {
@@ -43,7 +43,8 @@ const patientsData: Record<string, PatientInfo> = {
     dateOfBirth: "05/08/1988",
     email: "jean.dupont@email.com",
     insurance: "Carte vitale n°12345678901234",
-    doctor: "Dr. Martin (Généraliste)"
+    doctor: "Dr. Martin (Généraliste)",
+    status: "active"
   },
   "p2": {
     id: "p2",
@@ -55,7 +56,8 @@ const patientsData: Record<string, PatientInfo> = {
     dateOfBirth: "12/10/1990",
     email: "marie.martin@email.com",
     insurance: "Carte vitale n°23456789012345",
-    doctor: "Dr. Dubois (Cardiologue)"
+    doctor: "Dr. Dubois (Cardiologue)",
+    status: "active"
   },
   "p3": {
     id: "p3",
@@ -67,7 +69,8 @@ const patientsData: Record<string, PatientInfo> = {
     dateOfBirth: "07/07/1985",
     email: "robert.petit@email.com",
     insurance: "Carte vitale n°34567890123456",
-    doctor: "Dr. Leroy (Diabétologue)"
+    doctor: "Dr. Leroy (Diabétologue)",
+    status: "active"
   }
 };
 
@@ -199,6 +202,35 @@ export const PatientService = {
     const newPrescription = { id, ...prescription };
     prescriptionsData[patientId].unshift(newPrescription);
     return id;
+  },
+  
+  /**
+   * Met à jour le statut d'un patient (actif ou inactif)
+   */
+  updatePatientStatus: (patientId: string, status: "active" | "inactive" | "urgent"): boolean => {
+    if (patientsData[patientId]) {
+      patientsData[patientId].status = status;
+      toast.success(`Statut du patient mis à jour : ${status}`);
+      return true;
+    }
+    toast.error("Patient non trouvé");
+    return false;
+  },
+  
+  /**
+   * Met à jour les informations d'un patient
+   */
+  updatePatient: (patientId: string, patient: Partial<PatientInfo>): boolean => {
+    if (patientsData[patientId]) {
+      patientsData[patientId] = {
+        ...patientsData[patientId],
+        ...patient
+      };
+      toast.success("Informations patient mises à jour");
+      return true;
+    }
+    toast.error("Patient non trouvé");
+    return false;
   },
   
   /**
