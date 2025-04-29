@@ -58,8 +58,8 @@ export const OCRService = {
         potentialDosages.push(match[0]);
       }
 
-      // Get the box data safely
-      const box = result.data.box || null;
+      // Get the box data safely, ensuring it's treated as an object
+      const box = result.data.box || {};
       
       // Create the result object with proper typing
       const ocrResult: OCRResult = {
@@ -67,11 +67,11 @@ export const OCRService = {
         confidence: result.data.confidence,
         wordConfidences: result.data.words.map(w => w.confidence),
         bbox: {
-          // Correctly extract bounding box coordinates with null checks
-          x0: box ? (typeof box.x0 === 'number' ? box.x0 : 0) : 0,
-          y0: box ? (typeof box.y0 === 'number' ? box.y0 : 0) : 0,
-          x1: box ? (typeof box.x1 === 'number' ? box.x1 : 0) : 0,
-          y1: box ? (typeof box.y1 === 'number' ? box.y1 : 0) : 0
+          // Convert values to numbers explicitly to avoid type errors
+          x0: typeof box === 'object' && 'x0' in box ? Number(box.x0) : 0,
+          y0: typeof box === 'object' && 'y0' in box ? Number(box.y0) : 0,
+          x1: typeof box === 'object' && 'x1' in box ? Number(box.x1) : 0,
+          y1: typeof box === 'object' && 'y1' in box ? Number(box.y1) : 0
         },
         medicationData: {
           medications,
