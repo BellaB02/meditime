@@ -121,26 +121,22 @@ const App = () => {
                       <PatientDashboard /> : <Navigate to="/auth" />
                     } />
                     
-                    <Route path="/" element={
+                    <Route element={
                       isAuthenticated && userType === "soignant" ? 
-                      <Layout>
-                        <PageTransition>
-                          <Routes>
-                            <Route index element={<Index />} />
-                            <Route path="/patients" element={<Patients />} />
-                            <Route path="/patients/:id" element={<PatientFile />} />
-                            <Route path="/calendar" element={<Calendar />} />
-                            <Route path="/admin" element={<AdminTasks />} />
-                            <Route path="/admin/billing" element={<BillingPage />} />
-                            <Route path="/settings" element={<Settings />} />
-                            <Route path="/caresheets" element={<CareSheets />} />
-                            <Route path="/rounds" element={<Rounds />} />
-                            <Route path="/practice" element={<Practice />} />
-                            <Route path="*" element={<NotFound />} />
-                          </Routes>
-                        </PageTransition>
-                      </Layout> : <Navigate to="/auth" />
-                    } />
+                      <Layout /> : <Navigate to="/auth" />
+                    }>
+                      <Route index element={<Index />} />
+                      <Route path="/patients" element={<Patients />} />
+                      <Route path="/patients/:id" element={<PatientFile />} />
+                      <Route path="/calendar" element={<Calendar />} />
+                      <Route path="/admin" element={<AdminTasks />} />
+                      <Route path="/admin/billing" element={<BillingPage />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path="/caresheets" element={<CareSheets />} />
+                      <Route path="/rounds" element={<Rounds />} />
+                      <Route path="/practice" element={<Practice />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Route>
                   </Routes>
                 </SidebarProvider>
               </BrowserRouter>
