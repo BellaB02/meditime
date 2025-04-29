@@ -1,6 +1,6 @@
 
-import { StatsCards } from "@/components/Dashboard/StatsCards";
-import { AppointmentList } from "@/components/Dashboard/AppointmentList";
+import StatsCards from "@/components/Dashboard/StatsCards";
+import AppointmentList from "@/components/Dashboard/AppointmentList";
 import { DailyCareProgress } from "@/components/Dashboard/DailyCareProgress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Calendar, Users } from "lucide-react";

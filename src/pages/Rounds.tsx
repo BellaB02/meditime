@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   MapPin, ChevronRight, Clock, CheckCircle, MapIcon, Calendar, 
-  Edit, Trash, Play, CheckCircle2, RotateCw, ListChecks, Plus, User 
+  Edit, Trash, Play, CheckCircle2, RotateCw, ListChecks, Plus, User, Phone 
 } from "lucide-react";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
