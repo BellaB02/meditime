@@ -1,7 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateFormatService } from "@/services/DateFormatService";
-import { UserWelcome } from "./UserWelcome";
 import { Check, Clock } from "lucide-react";
 
 export interface DailySummaryProps {
@@ -28,8 +27,6 @@ export const DailySummary = ({
   
   return (
     <div className="space-y-6">
-      <UserWelcome />
-      
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">

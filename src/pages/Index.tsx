@@ -73,33 +73,44 @@ export default function Index() {
   
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-4">
-          <UserWelcome firstName={userProfile.firstName} role={userProfile.role} />
-          <StatsCards />
-          <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
-            <DailySummary 
-              appointmentsCount={appointments.length} 
-              completedAppointmentsCount={1} 
-              nextAppointment={{
-                time: "10:30",
-                patientName: "Marie Martin"
-              }}
-            />
-            <DailyCareProgress className="lg:col-span-2" />
-          </div>
-          <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <AppointmentList 
-                title="Rendez-vous du jour" 
-                appointments={appointments}
-              />
-            </div>
-            <CareSheetList careSheets={careSheets} />
-          </div>
-          <StatsModule />
-        </div>
+      {/* En-tête avec message de bienvenue */}
+      <UserWelcome firstName={userProfile.firstName} role={userProfile.role} />
+      
+      {/* Statistiques principales */}
+      <StatsCards />
+      
+      {/* Grille principale */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {/* Résumé quotidien - prend 1 colonne sur mobile, 1 sur desktop */}
+        <DailySummary 
+          appointmentsCount={appointments.length} 
+          completedAppointmentsCount={1} 
+          nextAppointment={{
+            time: "10:30",
+            patientName: "Marie Martin"
+          }}
+        />
+        
+        {/* Progression des soins - prend toute la largeur sur mobile, 2 colonnes sur desktop */}
+        <DailyCareProgress className="md:col-span-2" />
       </div>
+      
+      {/* Liste de rendez-vous et feuilles de soins */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {/* Liste de rendez-vous - prend toute la largeur sur mobile, 2 colonnes sur desktop */}
+        <div className="md:col-span-2">
+          <AppointmentList 
+            title="Rendez-vous du jour" 
+            appointments={appointments}
+          />
+        </div>
+        
+        {/* Liste de feuilles de soins - prend 1 colonne */}
+        <CareSheetList careSheets={careSheets} />
+      </div>
+      
+      {/* Module de statistiques */}
+      <StatsModule />
     </div>
   );
 }
