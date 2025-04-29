@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, Upload } from "lucide-react";
@@ -8,6 +8,9 @@ import PrescriptionsTab from "./PrescriptionsTab";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { usePatientsService } from "@/hooks/usePatientsService";
+import { CareDocument } from "@/integrations/supabase/services/types";
 
 interface DocumentsTabProps {
   patientId: string;
@@ -18,23 +21,30 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [documentTitle, setDocumentTitle] = useState("");
   const [documentType, setDocumentType] = useState("");
+  const [documents, setDocuments] = useState<CareDocument[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   
-  const documents = [
-    {
-      id: "doc-1",
-      title: "Analyse de sang",
-      date: "15/04/2025",
-      type: "Résultat d'analyse",
-      filePath: "/documents/aide_memoire_cotation_ngap.pdf"
-    },
-    {
-      id: "doc-2",
-      title: "Radiographie",
-      date: "10/04/2025",
-      type: "Imagerie",
-      filePath: "/documents/feuille_de_soins_vierge.pdf"
-    }
+  // Utiliser le hook pour les documents du patient
+  const { usePatientDocuments, useUploadPatientDocument } = usePatientsService();
+  const { data: patientDocuments, isLoading: isLoadingDocuments } = usePatientDocuments(patientId);
+  const { mutateAsync: uploadDocument, isLoading: isUploading } = useUploadPatientDocument();
+  
+  // Types de documents disponibles
+  const documentTypes = [
+    "Résultat d'analyse",
+    "Imagerie",
+    "Compte-rendu médical",
+    "Ordonnance",
+    "Document administratif",
+    "Autre"
   ];
+  
+  // Synchroniser les documents quand ils sont chargés
+  useEffect(() => {
+    if (patientDocuments) {
+      setDocuments(patientDocuments);
+    }
+  }, [patientDocuments]);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -42,7 +52,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
     }
   };
   
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!selectedFile) {
       toast.error("Veuillez sélectionner un fichier");
       return;
@@ -53,12 +63,38 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
       return;
     }
     
-    // Simuler le téléversement du fichier
-    toast.success(`Document "${documentTitle}" ajouté avec succès`);
-    setSelectedFile(null);
-    setDocumentTitle("");
-    setDocumentType("");
-    setIsDialogOpen(false);
+    if (!documentType) {
+      toast.error("Veuillez sélectionner un type de document");
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      // Utiliser le service Supabase pour téléverser le document
+      await uploadDocument({
+        patientId,
+        file: selectedFile,
+        metadata: {
+          document_type: documentType,
+          title: documentTitle,
+          description: `Document ajouté le ${new Date().toLocaleDateString('fr-FR')}`
+        }
+      });
+      
+      // Réinitialiser le formulaire et fermer le dialog
+      toast.success(`Document "${documentTitle}" ajouté avec succès`);
+      setSelectedFile(null);
+      setDocumentTitle("");
+      setDocumentType("");
+      setIsDialogOpen(false);
+      
+    } catch (error) {
+      console.error("Erreur lors du téléversement:", error);
+      toast.error("Erreur lors de l'ajout du document");
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const handleDownload = (documentId: string, filePath: string) => {
@@ -108,21 +144,26 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
           </Button>
         </CardHeader>
         <CardContent>
-          {documents.length > 0 ? (
+          {isLoadingDocuments ? (
+            <div className="text-center py-6">
+              Chargement des documents...
+            </div>
+          ) : documents.length > 0 ? (
             <div className="space-y-4">
               {documents.map((doc) => (
                 <div key={doc.id} className="flex justify-between items-center p-4 border rounded-md">
                   <div>
                     <h3 className="font-medium">{doc.title}</h3>
                     <div className="text-sm text-muted-foreground mt-1">
-                      <div>Date: {doc.date}</div>
-                      <div>Type: {doc.type}</div>
+                      <div>Date: {new Date(doc.created_at || "").toLocaleDateString('fr-FR')}</div>
+                      <div>Type: {doc.document_type}</div>
                     </div>
                   </div>
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => handleDownload(doc.id, doc.filePath)}
+                    onClick={() => handleDownload(doc.id, doc.storage_path || "")}
+                    disabled={!doc.storage_path}
                   >
                     <Download size={16} className="mr-2" />
                     Télécharger
@@ -160,12 +201,18 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
             
             <div>
               <Label htmlFor="documentType">Type de document</Label>
-              <Input 
-                id="documentType" 
-                placeholder="Ex: Analyse, Imagerie, etc." 
-                value={documentType}
-                onChange={(e) => setDocumentType(e.target.value)}
-              />
+              <Select value={documentType} onValueChange={setDocumentType}>
+                <SelectTrigger id="documentType">
+                  <SelectValue placeholder="Sélectionner un type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {documentTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             <div>
@@ -198,11 +245,11 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isLoading}>
               Annuler
             </Button>
-            <Button onClick={handleUpload}>
-              Téléverser
+            <Button onClick={handleUpload} disabled={isLoading}>
+              {isLoading ? "Téléversement..." : "Téléverser"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -26,6 +25,7 @@ import CareProtocols from "./pages/CareProtocols";
 import CareProtocolEditor from "./pages/CareProtocolEditor";
 import PatientPortal from "./pages/PatientPortal";
 import PatientMessages from "./pages/PatientMessages";
+import Inventory from "./pages/Inventory";
 
 // Transitions entre les pages
 import { AnimatePresence, motion } from "framer-motion";
@@ -125,6 +125,11 @@ const App = () => {
                       <Route path="/practice" element={<Practice />} />
                       <Route path="/care-protocols" element={<CareProtocols />} />
                       <Route path="/care-protocols/:protocolId" element={<CareProtocolEditor />} />
+                      <Route path="/inventory" element={
+                        <Layout>
+                          <Inventory />
+                        </Layout>
+                      } />
                       <Route path="*" element={<NotFound />} />
                     </Route>
                   </Routes>

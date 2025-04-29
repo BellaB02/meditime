@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,10 @@ import AppointmentsTab from "@/components/patient/AppointmentsTab";
 import DocumentsTab from "@/components/patient/DocumentsTab";
 import MessagingTab from "@/components/patient/MessagingTab";
 import ExportDataButton from "@/components/patient/ExportDataButton";
+import PhotosTab from "@/components/patient/PhotosTab";
+import SignatureTab from "@/components/patient/SignatureTab";
+import VitalSignsAlerts from "@/components/patient/VitalSignsAlerts";
+import CareChecklist from "@/components/care/CareChecklist";
 
 interface PatientFileProps {
   patientId?: string;
@@ -120,13 +123,17 @@ const PatientFile = () => {
       </div>
       
       <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList>
+        <TabsList className="mb-6">
           <TabsTrigger value="profile"><User className="h-4 w-4 mr-2" /> Profil</TabsTrigger>
           <TabsTrigger value="appointments"><Calendar className="h-4 w-4 mr-2" /> Rendez-vous</TabsTrigger>
           <TabsTrigger value="caresheets"><ListChecks className="h-4 w-4 mr-2" /> Feuilles de soins</TabsTrigger>
           <TabsTrigger value="vitalsigns"><HeartPulse className="h-4 w-4 mr-2" /> Signes vitaux</TabsTrigger>
           <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-2" /> Documents</TabsTrigger>
           <TabsTrigger value="messaging"><MessageSquare className="h-4 w-4 mr-2" /> Messages</TabsTrigger>
+          <TabsTrigger value="photos">Photos</TabsTrigger>
+          <TabsTrigger value="signatures">Signatures</TabsTrigger>
+          <TabsTrigger value="vitalAlerts">Alertes</TabsTrigger>
+          <TabsTrigger value="checklists">Checklists</TabsTrigger>
         </TabsList>
         <TabsContent value="profile" className="space-y-2">
           <Card>
@@ -206,6 +213,21 @@ const PatientFile = () => {
         </TabsContent>
         <TabsContent value="messaging">
           <MessagingTab />
+        </TabsContent>
+        <TabsContent value="photos">
+          <PhotosTab patientId={patientId} />
+        </TabsContent>
+        <TabsContent value="signatures">
+          <SignatureTab patientId={patientId} patientName={patientInfo?.firstName ? `${patientInfo.firstName} ${patientInfo.name}` : patientInfo?.name || "Patient"} />
+        </TabsContent>
+        <TabsContent value="vitalAlerts">
+          <VitalSignsAlerts patientId={patientId} />
+        </TabsContent>
+        <TabsContent value="checklists">
+          <div className="space-y-6">
+            <h2 className="text-lg font-semibold mb-4">Checklists de soins</h2>
+            <CareChecklist patientId={patientId} />
+          </div>
         </TabsContent>
       </Tabs>
       
