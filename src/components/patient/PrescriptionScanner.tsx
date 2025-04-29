@@ -78,6 +78,7 @@ const PrescriptionScanner: React.FC<PrescriptionScannerProps> = ({
         ...scanResult,
         text: editedText,
         // Recalculate medication data based on edited text
+        // Fixed: Changed to match the OCRResult interface with potentialDosages
         medicationData: OCRService.extractMedicationData(editedText)
       };
       

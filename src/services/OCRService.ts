@@ -63,10 +63,11 @@ export const OCRService = {
         confidence: result.data.confidence,
         wordConfidences: result.data.words.map(w => w.confidence),
         bbox: {
-          x0: result.data.bbox.x0,
-          y0: result.data.bbox.y0,
-          x1: result.data.bbox.x1,
-          y1: result.data.bbox.y1
+          // Changed from bbox to box to match Tesseract.js API
+          x0: result.data.box.x0,
+          y0: result.data.box.y0,
+          x1: result.data.box.x1,
+          y1: result.data.box.y1
         },
         medicationData: {
           medications,
@@ -86,14 +87,14 @@ export const OCRService = {
   /**
    * Extract structured data from OCR text
    */
-  extractMedicationData: (ocrText: string): { medications: string[], dosages: string[] } => {
+  extractMedicationData: (ocrText: string): { medications: string[], potentialDosages: string[] } => {
     // More sophisticated extraction logic could be implemented here
     // This is a simplified version
     const medicationRegex = /(\b[A-Z][a-zA-Z]*([ -][A-Z][a-zA-Z]*)*\b)\s+(\d+(\.\d+)?)\s*(mg|ml|g|mcg|μg)/gi;
     const dosageRegex = /(\d+(\.\d+)?)\s*(mg|ml|g|mcg|μg|cp|comprimés?|gélules?|sachets?|ampoules?)/gi;
     
     const medications: string[] = [];
-    const dosages: string[] = [];
+    const potentialDosages: string[] = [];
     
     let match;
     while ((match = medicationRegex.exec(ocrText)) !== null) {
@@ -101,9 +102,9 @@ export const OCRService = {
     }
     
     while ((match = dosageRegex.exec(ocrText)) !== null) {
-      dosages.push(match[0]);
+      potentialDosages.push(match[0]);
     }
     
-    return { medications, dosages };
+    return { medications, potentialDosages };
   }
 };
