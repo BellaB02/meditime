@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { PatientInfo, PatientService, Prescription } from "@/services/PatientService";
 import { Visit } from "@/components/patient/VisitsTab";
@@ -9,13 +8,18 @@ import { patientFormSchema, PatientFormValues } from "@/components/patient/Patie
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePatientsService } from "@/hooks/usePatientsService";
-import { VitalSign, Patient } from "@/integrations/supabase/services/types";
+import { 
+  VitalSign, 
+  Patient, 
+  LegacyVitalSign, 
+  convertToLegacyVitalSign 
+} from "@/integrations/supabase/services/types";
 
 export const usePatientData = (patientId?: string) => {
   const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
   const [isEditingPatient, setIsEditingPatient] = useState(false);
   const [isEditModeDialogOpen, setIsEditModeDialogOpen] = useState(false);
-  const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([]);
+  const [vitalSigns, setVitalSigns] = useState<LegacyVitalSign[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [medicalNotes, setMedicalNotes] = useState("");
   const { user } = useAuth();
@@ -67,7 +71,9 @@ export const usePatientData = (patientId?: string) => {
       if (patient) {
         setPatientInfo(patient);
         setMedicalNotes(patient.medicalNotes || "");
-        setVitalSigns(PatientService.getVitalSigns(patientId));
+        // Convertir les signes vitaux du service existant
+        const legacyVitalSigns = PatientService.getVitalSigns(patientId);
+        setVitalSigns(legacyVitalSigns);
         setPrescriptions(PatientService.getPrescriptions(patientId));
       }
     }
@@ -100,23 +106,12 @@ export const usePatientData = (patientId?: string) => {
   // Update vital signs from Supabase
   useEffect(() => {
     if (supabaseVitalSigns && supabaseVitalSigns.length > 0) {
-      // Convert Supabase vital signs to legacy format
-      const convertedVitalSigns: VitalSign[] = supabaseVitalSigns.map(sign => ({
-        id: sign.id,
-        patient_id: sign.patient_id || '',
-        recorded_at: sign.recorded_at || '',
-        temperature: sign.temperature,
-        heart_rate: sign.heart_rate,
-        blood_pressure: sign.blood_pressure || '',
-        blood_sugar: sign.blood_sugar,
-        oxygen_saturation: sign.oxygen_saturation,
-        pain_level: sign.pain_level,
-        notes: sign.notes || '',
-        recorded_by: sign.recorded_by,
-        created_at: sign.created_at
-      }));
+      // Convertir les signes vitaux Supabase vers le format legacy
+      const convertedLegacyVitalSigns: LegacyVitalSign[] = supabaseVitalSigns.map(sign => 
+        convertToLegacyVitalSign(sign)
+      );
       
-      setVitalSigns(convertedVitalSigns);
+      setVitalSigns(convertedLegacyVitalSigns);
     }
   }, [supabaseVitalSigns]);
   

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Thermometer, Heart, Activity, Edit, Trash2 } from "lucide-react";
-import { VitalSign } from "@/services/PatientService";
+import { LegacyVitalSign } from "@/integrations/supabase/services/types"; 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,11 +12,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 type VitalSignsTabProps = {
-  vitalSigns: VitalSign[];
+  vitalSigns: LegacyVitalSign[];
 };
 
 const VitalSignsTab: React.FC<VitalSignsTabProps> = ({ vitalSigns: initialVitalSigns }) => {
-  const [vitalSigns, setVitalSigns] = useState<VitalSign[]>(initialVitalSigns);
+  const [vitalSigns, setVitalSigns] = useState<LegacyVitalSign[]>(initialVitalSigns);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
@@ -55,7 +55,7 @@ const VitalSignsTab: React.FC<VitalSignsTabProps> = ({ vitalSigns: initialVitalS
       return;
     }
     
-    const newVitalSign: VitalSign = {
+    const newVitalSign: LegacyVitalSign = {
       date: "Aujourd'hui",
       temperature: `${temperature}°C`,
       heartRate: `${heartRate} bpm`,

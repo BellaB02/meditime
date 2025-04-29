@@ -1,8 +1,12 @@
-
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { patientsService } from '@/integrations/supabase/services/patientsService';
 import { toast } from 'sonner';
-import { Patient, VitalSign } from '@/integrations/supabase/services/types';
+import { 
+  Patient, 
+  VitalSign, 
+  LegacyVitalSign, 
+  convertToSupabaseVitalSign 
+} from '@/integrations/supabase/services/types';
 
 export function usePatientsService() {
   const queryClient = useQueryClient();
@@ -65,11 +69,17 @@ export function usePatientsService() {
   
   const useAddVitalSign = () => {
     return useMutation({
-      mutationFn: (vitalSign: Omit<VitalSign, 'id' | 'created_at'> & { patient_id: string }) => 
-        patientsService.addVitalSign(vitalSign),
+      mutationFn: (params: { 
+        patientId: string, 
+        vitalSign: LegacyVitalSign 
+      }) => {
+        // Convertir de LegacyVitalSign vers le format Supabase VitalSign
+        const supabaseVitalSign = convertToSupabaseVitalSign(params.vitalSign, params.patientId);
+        return patientsService.addVitalSign(supabaseVitalSign);
+      },
       onSuccess: (_, variables) => {
         queryClient.invalidateQueries({ 
-          queryKey: ['patient', variables.patient_id, 'vital-signs'] 
+          queryKey: ['patient', variables.patientId, 'vital-signs'] 
         });
         toast.success("Signes vitaux enregistrés avec succès");
       },

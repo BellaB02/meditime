@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
@@ -35,7 +34,7 @@ const PatientFile = () => {
     setIsEditingPatient,
     isEditModeDialogOpen,
     setIsEditModeDialogOpen,
-    vitalSigns,
+    vitalSigns, // Maintenant c'est un LegacyVitalSign[]
     prescriptions,
     visits,
     patientForm,

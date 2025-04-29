@@ -47,6 +47,7 @@ export interface PatientMessage {
   created_at?: string | null;
 }
 
+// Type VitalSign de Supabase
 export interface VitalSign {
   id: string;
   patient_id?: string | null;
@@ -61,6 +62,45 @@ export interface VitalSign {
   recorded_at?: string | null;
   created_at?: string | null;
 }
+
+// Type pour la compatibilité avec l'ancien format VitalSign
+export interface LegacyVitalSign {
+  date: string;
+  temperature: string;
+  heartRate: string;
+  bloodPressure: string;
+  notes: string;
+}
+
+// Fonctions d'aide pour la conversion entre les deux formats
+export const convertToLegacyVitalSign = (vitalSign: VitalSign): LegacyVitalSign => {
+  return {
+    date: vitalSign.recorded_at ? new Date(vitalSign.recorded_at).toLocaleDateString('fr-FR') : 'Aujourd\'hui',
+    temperature: `${vitalSign.temperature || 0}°C`,
+    heartRate: `${vitalSign.heart_rate || 0} bpm`,
+    bloodPressure: vitalSign.blood_pressure || '120/80',
+    notes: vitalSign.notes || ''
+  };
+};
+
+export const convertToSupabaseVitalSign = (legacyVitalSign: LegacyVitalSign, patientId?: string): Omit<VitalSign, 'id' | 'created_at'> => {
+  // Extraire la valeur numérique de la température
+  const tempMatch = legacyVitalSign.temperature.match(/(\d+(?:\.\d+)?)/);
+  const temperature = tempMatch ? parseFloat(tempMatch[0]) : null;
+  
+  // Extraire la valeur numérique du rythme cardiaque
+  const hrMatch = legacyVitalSign.heartRate.match(/(\d+)/);
+  const heartRate = hrMatch ? parseInt(hrMatch[0]) : null;
+  
+  return {
+    patient_id: patientId || null,
+    temperature: temperature,
+    heart_rate: heartRate,
+    blood_pressure: legacyVitalSign.bloodPressure,
+    notes: legacyVitalSign.notes,
+    recorded_at: new Date().toISOString()
+  };
+};
 
 export interface CareDocument {
   id: string;
