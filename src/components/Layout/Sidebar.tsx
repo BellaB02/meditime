@@ -1,6 +1,6 @@
 
 import { NavLink } from 'react-router-dom';
-import { Calendar, FileText, Users, Home, Clock, MedKit } from 'lucide-react';
+import { Calendar, FileText, Users, Home, Clock, Stethoscope } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSidebar } from './SidebarProvider';
 
@@ -16,7 +16,7 @@ const Sidebar = () => {
     >
       <div className="flex items-center h-16 px-4 border-b border-sidebar-border">
         <div className={cn('flex items-center overflow-hidden', isOpen ? 'justify-start' : 'justify-center')}>
-          <MedKit className="h-6 w-6 text-primary" />
+          <Stethoscope className="h-6 w-6 text-primary" />
           {isOpen && (
             <h1 className="ml-2 text-lg font-semibold text-primary">Infirmier Facile</h1>
           )}

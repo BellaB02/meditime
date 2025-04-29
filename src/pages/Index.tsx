@@ -1,11 +1,10 @@
-
 import { useState } from "react";
 import StatsCards from "@/components/Dashboard/StatsCards";
 import AppointmentList from "@/components/Dashboard/AppointmentList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, Users, FileText } from "lucide-react";
 
 // Données fictives pour la démo
 const todayAppointments = [
