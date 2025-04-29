@@ -1,0 +1,185 @@
+
+import { useState } from "react";
+import { Round } from "@/types/rounds";
+import { toast } from "sonner";
+
+// Initial mock data
+const initialRounds: Round[] = [
+  {
+    id: "round-1",
+    name: "Tournée du matin",
+    date: "29/04/2025",
+    completed: false,
+    started: false,
+    stops: [
+      {
+        id: "stop-1",
+        patient: {
+          name: "Jean Dupont",
+          address: "15 Rue de Paris, 75001 Paris"
+        },
+        time: "08:30",
+        care: "Prise de sang",
+        completed: false
+      },
+      {
+        id: "stop-2",
+        patient: {
+          name: "Marie Martin",
+          address: "8 Avenue Victor Hugo, 75016 Paris"
+        },
+        time: "10:15",
+        care: "Changement pansement",
+        completed: false
+      },
+      {
+        id: "stop-3",
+        patient: {
+          name: "Robert Petit",
+          address: "8 rue du Commerce, 75015 Paris"
+        },
+        time: "11:30",
+        care: "Injection insuline",
+        completed: false
+      }
+    ]
+  },
+  {
+    id: "round-2",
+    name: "Tournée de l'après-midi",
+    date: "29/04/2025",
+    completed: false,
+    started: false,
+    stops: [
+      {
+        id: "stop-4",
+        patient: {
+          name: "Sophie Leroy",
+          address: "25 rue des Martyrs, 75009 Paris"
+        },
+        time: "14:00",
+        care: "Soins post-opératoires",
+        completed: false
+      },
+      {
+        id: "stop-5",
+        patient: {
+          name: "Pierre Bernard",
+          address: "14 boulevard Haussmann, 75008 Paris"
+        },
+        time: "16:30",
+        care: "Perfusion",
+        completed: false
+      }
+    ]
+  }
+];
+
+export const useRounds = () => {
+  const [rounds, setRounds] = useState<Round[]>(initialRounds);
+  const [showCompleteAnimation, setShowCompleteAnimation] = useState(false);
+  const [showStartAnimation, setShowStartAnimation] = useState(false);
+  
+  // Start a round
+  const handleStartRound = (roundId: string) => {
+    setShowStartAnimation(true);
+    
+    setTimeout(() => {
+      setRounds(prev => 
+        prev.map(round => 
+          round.id === roundId 
+            ? { ...round, started: true } 
+            : round
+        )
+      );
+      
+      toast.success("Tournée démarrée");
+    }, 2000);
+  };
+  
+  // Mark a stop as completed
+  const handleCompleteStop = (roundId: string, stopId: string) => {
+    setRounds(prev => 
+      prev.map(round => {
+        if (round.id === roundId) {
+          const updatedStops = round.stops.map(stop => 
+            stop.id === stopId ? { ...stop, completed: true } : stop
+          );
+          
+          // Check if all stops are completed
+          const allCompleted = updatedStops.every(stop => stop.completed);
+          
+          return {
+            ...round,
+            stops: updatedStops,
+            completed: allCompleted
+          };
+        }
+        return round;
+      })
+    );
+    
+    toast.success("Soin marqué comme terminé");
+  };
+  
+  // Reactivate a stop
+  const handleReactivateStop = (roundId: string, stopId: string) => {
+    setRounds(prev => 
+      prev.map(round => {
+        if (round.id === roundId) {
+          const updatedStops = round.stops.map(stop => 
+            stop.id === stopId ? { ...stop, completed: false } : stop
+          );
+          
+          // Update round status
+          return {
+            ...round,
+            stops: updatedStops,
+            completed: false // Round is no longer completed
+          };
+        }
+        return round;
+      })
+    );
+    
+    toast.success("Soin remis en cours");
+  };
+  
+  // Complete an entire round
+  const handleCompleteRound = (roundId: string) => {
+    setRounds(prev => 
+      prev.map(round => 
+        round.id === roundId 
+          ? { 
+              ...round, 
+              completed: true, 
+              stops: round.stops.map(stop => ({ ...stop, completed: true })) 
+            } 
+          : round
+      )
+    );
+    
+    setShowCompleteAnimation(true);
+    toast.success("Tournée terminée avec succès");
+  };
+  
+  // Navigate to a patient's address
+  const handleNavigateToAddress = (address: string) => {
+    const encodedAddress = encodeURIComponent(address);
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`, '_blank');
+    toast.info(`Navigation vers : ${address}`);
+  };
+
+  return {
+    rounds,
+    showCompleteAnimation,
+    showStartAnimation,
+    setShowCompleteAnimation,
+    setShowStartAnimation,
+    handleStartRound,
+    handleCompleteStop,
+    handleReactivateStop,
+    handleCompleteRound,
+    handleNavigateToAddress
+  };
+};
