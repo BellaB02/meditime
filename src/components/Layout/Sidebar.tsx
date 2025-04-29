@@ -1,0 +1,71 @@
+
+import { NavLink } from 'react-router-dom';
+import { Calendar, FileText, Users, Home, Clock, MedKit } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useSidebar } from './SidebarProvider';
+
+const Sidebar = () => {
+  const { isOpen } = useSidebar();
+  
+  return (
+    <aside 
+      className={cn(
+        'fixed left-0 top-0 z-20 h-full bg-sidebar transition-all duration-300 border-r border-sidebar-border',
+        isOpen ? 'w-64' : 'w-[70px]'
+      )}
+    >
+      <div className="flex items-center h-16 px-4 border-b border-sidebar-border">
+        <div className={cn('flex items-center overflow-hidden', isOpen ? 'justify-start' : 'justify-center')}>
+          <MedKit className="h-6 w-6 text-primary" />
+          {isOpen && (
+            <h1 className="ml-2 text-lg font-semibold text-primary">Infirmier Facile</h1>
+          )}
+        </div>
+      </div>
+      
+      <nav className="px-2 pt-4">
+        <ul className="space-y-1">
+          <li>
+            <NavLink 
+              to="/" 
+              className={({isActive}) => cn('nav-link', isActive && 'active')}
+              end
+            >
+              <Home size={20} />
+              {isOpen && <span>Tableau de bord</span>}
+            </NavLink>
+          </li>
+          <li>
+            <NavLink 
+              to="/patients" 
+              className={({isActive}) => cn('nav-link', isActive && 'active')}
+            >
+              <Users size={20} />
+              {isOpen && <span>Patients</span>}
+            </NavLink>
+          </li>
+          <li>
+            <NavLink 
+              to="/calendar" 
+              className={({isActive}) => cn('nav-link', isActive && 'active')}
+            >
+              <Calendar size={20} />
+              {isOpen && <span>Planning</span>}
+            </NavLink>
+          </li>
+          <li>
+            <NavLink 
+              to="/admin" 
+              className={({isActive}) => cn('nav-link', isActive && 'active')}
+            >
+              <FileText size={20} />
+              {isOpen && <span>Administratif</span>}
+            </NavLink>
+          </li>
+        </ul>
+      </nav>
+    </aside>
+  );
+};
+
+export default Sidebar;
