@@ -108,7 +108,9 @@ export const RoundDialog = ({
       onSubmit({
         name: formData.name,
         date: formData.date,
-        stops: formData.stops
+        stops: formData.stops,
+        completed: false,
+        started: false
       });
     }
     
