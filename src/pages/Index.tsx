@@ -5,13 +5,14 @@ import StatsCards from "@/components/Dashboard/StatsCards";
 import StatsModule from "@/components/Dashboard/StatsModule";
 import { UserWelcome } from "@/components/Dashboard/UserWelcome";
 import { DailySummary } from "@/components/Dashboard/DailySummary";
-import AppointmentList, { Appointment } from "@/components/Dashboard/AppointmentList";
+import AppointmentList from "@/components/Dashboard/AppointmentList";
 import { CareSheetList } from "@/components/CareSheets/CareSheetList";
-import { Document } from "@/services/DocumentService";
 import { WelcomeGuide } from "@/components/Dashboard/WelcomeGuide";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
-import { createDemoData, isNewUser } from "@/utils/demoDataHelper";
+import { isNewUser } from "@/utils/demoDataHelper";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Index() {
   const { user } = useAuth();
@@ -19,85 +20,124 @@ export default function Index() {
   const [isLoading, setIsLoading] = useState(false);
   const [isNewUserState, setIsNewUserState] = useState(false);
   
-  // Check if user is new and create demo data if needed
+  // Check if user is new
   useEffect(() => {
-    const checkNewUserAndCreateDemo = async () => {
+    const checkNewUser = async () => {
       if (!user) return;
       
       setIsLoading(true);
       const userIsNew = await isNewUser();
-      
-      if (userIsNew) {
-        setIsNewUserState(true);
-        await createDemoData();
-      }
-      
+      setIsNewUserState(userIsNew);
       setIsLoading(false);
     };
     
-    checkNewUserAndCreateDemo();
+    checkNewUser();
   }, [user]);
   
-  // Simuler un profil d'utilisateur
+  // Fetch real appointments from Supabase
+  const { data: appointments = [] } = useQuery({
+    queryKey: ['today-appointments'],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      // Get today's date in ISO format (YYYY-MM-DD)
+      const today = new Date().toISOString().split('T')[0];
+      
+      const { data, error } = await supabase
+        .from('appointments')
+        .select(`
+          id,
+          time,
+          patient_id,
+          care_type,
+          patients(first_name, last_name, address)
+        `)
+        .eq('date', today)
+        .order('time');
+        
+      if (error) {
+        console.error("Error fetching appointments:", error);
+        throw error;
+      }
+      
+      // Transform the data to match the component's expected format
+      return data.map(appt => ({
+        id: appt.id,
+        time: appt.time.substring(0, 5), // Format HH:MM
+        patient: {
+          id: appt.patient_id,
+          name: `${appt.patients?.first_name || ""} ${appt.patients?.last_name || ""}`,
+          address: appt.patients?.address || "",
+          care: appt.care_type
+        }
+      }));
+    },
+    enabled: !!user
+  });
+  
+  // Fetch real care sheets from Supabase
+  const { data: careSheets = [] } = useQuery({
+    queryKey: ['recent-caresheets'],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      // Get documents of type "feuille_de_soins" or similar
+      const { data, error } = await supabase
+        .from('care_documents')
+        .select(`
+          id, 
+          title, 
+          document_type,
+          patient_id,
+          patients(first_name, last_name),
+          created_at
+        `)
+        .in('document_type', ['feuille_de_soins', 'careSheet'])
+        .order('created_at', { ascending: false })
+        .limit(5);
+        
+      if (error) {
+        console.error("Error fetching care sheets:", error);
+        throw error;
+      }
+      
+      // Transform the data to match the component's expected format
+      return data.map(doc => {
+        // Format date to DD/MM/YYYY
+        const date = new Date(doc.created_at);
+        const formattedDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+        
+        return {
+          id: doc.id,
+          patientName: `${doc.patients?.first_name || ""} ${doc.patients?.last_name || ""}`,
+          patientId: doc.patient_id,
+          name: doc.title,
+          date: formattedDate,
+          type: doc.document_type,
+          careInfo: {
+            type: doc.title?.includes('-') ? doc.title.split('-')[1]?.trim() : "",
+            code: "",
+            description: ""
+          }
+        };
+      });
+    },
+    enabled: !!user
+  });
+  
+  // User profile for welcome message
   const userProfile = {
     firstName: profile?.first_name || "Utilisateur",
     lastName: profile?.last_name || "",
     role: "Professionnel de santé"
   };
-
-  // Simuler des rendez-vous
-  const appointments: Appointment[] = [
-    {
-      id: "apt1",
-      time: "09:00",
-      patient: {
-        id: "p1",
-        name: "Jean Dupont",
-        address: "15 rue de Paris",
-        care: "Prise de sang"
-      }
-    },
-    {
-      id: "apt2",
-      time: "10:30",
-      patient: {
-        id: "p2",
-        name: "Marie Martin",
-        address: "8 Avenue Victor Hugo",
-        care: "Injection"
-      }
-    }
-  ];
-
-  // Simuler des documents pour les feuilles de soins
-  const careSheets: Document[] = [
-    {
-      id: "cs1",
-      patientName: "Jean Dupont",
-      patientId: "p1",
-      name: "Feuille de soins - Prise de sang",
-      date: "15/04/2025",
-      type: "feuille_de_soins",
-      careInfo: {
-        type: "Prise de sang",
-        code: "AMI 1.5",
-        description: "Prélèvement sanguin"
-      }
-    },
-    {
-      id: "cs2",
-      patientName: "Marie Martin",
-      patientId: "p2",
-      name: "Feuille de soins - Injection",
-      date: "15/04/2025",
-      type: "feuille_de_soins",
-      careInfo: {
-        type: "Injection",
-        code: "AMI 1",
-        description: "Injection sous-cutanée"
-      }
-    }
-  ];
+  
+  // Calculate summary data from real appointments
+  const completedAppointmentsCount = appointments.filter(apt => apt.completed).length || 0;
+  const nextAppointment = appointments.length > 0 ? {
+    time: appointments[0].time,
+    patientName: appointments[0].patient.name
+  } : undefined;
   
   return (
     <div className="space-y-6">
@@ -105,7 +145,7 @@ export default function Index() {
       <UserWelcome firstName={userProfile.firstName} role={userProfile.role} />
       
       {/* Guide de bienvenue pour les nouveaux utilisateurs */}
-      <WelcomeGuide />
+      {isNewUserState && <WelcomeGuide />}
       
       {/* Statistiques principales */}
       <StatsCards />
@@ -115,11 +155,8 @@ export default function Index() {
         {/* Résumé quotidien - prend 1 colonne sur mobile, 1 sur desktop */}
         <DailySummary 
           appointmentsCount={appointments.length} 
-          completedAppointmentsCount={1} 
-          nextAppointment={{
-            time: "10:30",
-            patientName: "Marie Martin"
-          }}
+          completedAppointmentsCount={completedAppointmentsCount} 
+          nextAppointment={nextAppointment}
         />
         
         {/* Progression des soins - prend toute la largeur sur mobile, 2 colonnes sur desktop */}

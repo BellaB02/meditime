@@ -34,12 +34,16 @@ import {
   Trash,
   Download,
   Printer,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useBillingService } from "@/hooks/useBillingService";
+import { PDFGenerationService } from "@/services/PDFGenerationService";
 
 // Types
 interface BillingFormValues {
@@ -50,38 +54,19 @@ interface BillingFormValues {
   comment: string;
 }
 
-interface NursingAct {
-  id: string;
-  code: string;
-  description: string;
-  rate: number;
-  active: boolean;
-}
-
-interface Majoration {
-  id: string;
-  code: string;
-  description: string;
-  rate: number;
-  active: boolean;
-}
-
-// Données fictives pour les patients
-const patients = [
-  { id: "p1", name: "Jean Dupont" },
-  { id: "p2", name: "Marie Martin" },
-  { id: "p3", name: "Robert Petit" },
-  { id: "p4", name: "Sophie Leroy" },
-  { id: "p5", name: "Pierre Bernard" },
-];
-
 const BillingPage = () => {
+  const { user } = useAuth();
   const [selectedActs, setSelectedActs] = useState<string[]>([]);
   const [selectedMajorations, setSelectedMajorations] = useState<string[]>([]);
-  const [previewInvoices, setPreviewInvoices] = useState<any[]>([]);
-  const [nursingActsData, setNursingActsData] = useState<NursingAct[]>([]);
-  const [majorationsData, setMajorationsData] = useState<Majoration[]>([]);
+  const [nursingActsData, setNursingActsData] = useState<any[]>([]);
+  const [majorationsData, setMajorationsData] = useState<any[]>([]);
+  const [patientsData, setPatientsData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { useBillingRecords, useCreateBillingRecord } = useBillingService();
+  
+  // Get billing records
+  const { data: billingRecords = [], isLoading: isLoadingBilling } = useBillingRecords();
+  const { mutate: createBillingRecord } = useCreateBillingRecord();
   
   const form = useForm<BillingFormValues>({
     defaultValues: {
@@ -117,6 +102,16 @@ const BillingPage = () => {
           
         if (majError) throw majError;
         setMajorationsData(majData || []);
+        
+        // Charger les patients
+        const { data: patients, error: patientsError } = await supabase
+          .from('patients')
+          .select('id, first_name, last_name')
+          .eq('status', 'active')
+          .order('last_name');
+          
+        if (patientsError) throw patientsError;
+        setPatientsData(patients || []);
         
       } catch (error) {
         console.error('Erreur lors du chargement des données:', error);
@@ -175,44 +170,179 @@ const BillingPage = () => {
     return total.toFixed(2);
   };
 
-  const onSubmit = (data: BillingFormValues) => {
-    const patient = patients.find(p => p.id === data.patient)?.name || "Patient inconnu";
-    const total = calculateTotal();
+  const onSubmit = async (data: BillingFormValues) => {
+    if (!user) {
+      toast.error("Vous devez être connecté pour créer une facturation");
+      return;
+    }
     
-    // Créer une nouvelle facture simulée
-    const newInvoice = {
-      id: `INV-${Math.floor(1000 + Math.random() * 9000)}`, // Générer un ID aléatoire
-      patient,
-      date: format(new Date(data.date), "dd/MM/yyyy", { locale: fr }),
-      acts: selectedActs.map(id => {
-        const act = nursingActsData.find(a => a.id === id);
-        return act ? act.code : "";
-      }).join(", "),
-      majorations: selectedMajorations.map(id => {
-        const maj = majorationsData.find(m => m.id === id);
-        return maj ? maj.code : "";
-      }).join(", "),
-      total: `${total}€`,
-      comment: data.comment
+    const patientData = patientsData.find(p => p.id === data.patient);
+    if (!patientData) {
+      toast.error("Patient non trouvé");
+      return;
+    }
+    
+    const total = parseFloat(calculateTotal());
+    
+    // Préparer les données des actes
+    const actDetails = selectedActs.map(id => {
+      const act = nursingActsData.find(a => a.id === id);
+      return act ? {
+        code: act.code,
+        description: act.description,
+        rate: act.rate
+      } : null;
+    }).filter(Boolean);
+    
+    // Préparer les données des majorations
+    const majorationDetails = selectedMajorations.map(id => {
+      const maj = majorationsData.find(m => m.id === id);
+      return maj ? {
+        code: maj.code,
+        description: maj.description,
+        rate: maj.rate
+      } : null;
+    }).filter(Boolean);
+    
+    // Récupérer le premier code d'acte pour le champ care_code
+    const careCode = actDetails.length > 0 ? actDetails[0].code : "UNKNOWN";
+    
+    // Créer le nouvel enregistrement de facturation
+    const newRecord = {
+      patient_id: data.patient,
+      care_code: careCode,
+      quantity: 1,
+      base_amount: actDetails.reduce((sum, act) => sum + (act?.rate || 0), 0),
+      majorations: majorationDetails,
+      total_amount: total,
+      created_by: user.id,
+      payment_status: "pending",
+      transmission_status: "pending",
     };
     
-    setPreviewInvoices([...previewInvoices, newInvoice]);
-    toast.success("Facturation générée avec succès");
-    
-    // Réinitialiser le formulaire
-    form.reset();
-    setSelectedActs([]);
-    setSelectedMajorations([]);
-  };
-
-  const handlePrintInvoice = (invoice: any) => {
-    toast.success(`Impression de la facture ${invoice.id}`);
-    // Logique d'impression
+    try {
+      await createBillingRecord(newRecord);
+      
+      // Réinitialiser le formulaire
+      form.reset();
+      setSelectedActs([]);
+      setSelectedMajorations([]);
+    } catch (error) {
+      console.error("Erreur lors de la création de la facturation:", error);
+      toast.error("Erreur lors de la création de la facturation");
+    }
   };
 
   const handleDownloadInvoice = (invoice: any) => {
-    toast.success(`Téléchargement de la facture ${invoice.id} en PDF`);
-    // Logique de téléchargement
+    try {
+      const patientName = `${invoice.patients?.first_name || ""} ${invoice.patients?.last_name || ""}`;
+      
+      // Préparer les détails pour la facture
+      const invoiceInfo = {
+        id: invoice.id.substring(0, 8),
+        date: format(new Date(invoice.created_at), "dd/MM/yyyy"),
+        amount: parseFloat(invoice.total_amount || 0),
+        details: [
+          {
+            description: `${invoice.care_code} - Acte de soins`,
+            quantity: invoice.quantity || 1,
+            unitPrice: parseFloat(invoice.base_amount || 0),
+            total: parseFloat(invoice.base_amount || 0)
+          },
+          ...(invoice.majorations || []).map((maj: any) => ({
+            description: `${maj.code} - ${maj.description}`,
+            quantity: 1,
+            unitPrice: parseFloat(maj.rate || 0),
+            total: parseFloat(maj.rate || 0)
+          }))
+        ],
+        patientId: invoice.patient_id,
+        paid: invoice.payment_status === "paid",
+        totalAmount: parseFloat(invoice.total_amount || 0)
+      };
+      
+      // Générer et télécharger le PDF
+      const pdfDoc = PDFGenerationService.generateInvoicePDF(invoiceInfo);
+      if (pdfDoc) {
+        PDFGenerationService.saveInvoicePDF(pdfDoc, invoiceInfo.id);
+        toast.success(`Téléchargement de la facture ${invoiceInfo.id}`);
+      } else {
+        toast.error("Erreur lors de la génération du PDF");
+      }
+    } catch (error) {
+      console.error("Erreur lors du téléchargement de la facture:", error);
+      toast.error("Erreur lors du téléchargement de la facture");
+    }
+  };
+
+  const handlePrintInvoice = (invoice: any) => {
+    try {
+      const patientName = `${invoice.patients?.first_name || ""} ${invoice.patients?.last_name || ""}`;
+      
+      // Préparer les détails pour la facture
+      const invoiceInfo = {
+        id: invoice.id.substring(0, 8),
+        date: format(new Date(invoice.created_at), "dd/MM/yyyy"),
+        amount: parseFloat(invoice.total_amount || 0),
+        details: [
+          {
+            description: `${invoice.care_code} - Acte de soins`,
+            quantity: invoice.quantity || 1,
+            unitPrice: parseFloat(invoice.base_amount || 0),
+            total: parseFloat(invoice.base_amount || 0)
+          },
+          ...(invoice.majorations || []).map((maj: any) => ({
+            description: `${maj.code} - ${maj.description}`,
+            quantity: 1,
+            unitPrice: parseFloat(maj.rate || 0),
+            total: parseFloat(maj.rate || 0)
+          }))
+        ],
+        patientId: invoice.patient_id,
+        paid: invoice.payment_status === "paid",
+        totalAmount: parseFloat(invoice.total_amount || 0)
+      };
+      
+      // Générer le PDF pour impression
+      const pdfDoc = PDFGenerationService.generateInvoicePDF(invoiceInfo);
+      if (pdfDoc) {
+        const pdfUrl = PDFGenerationService.preparePDFForPrint(pdfDoc);
+        if (pdfUrl) {
+          const printWindow = window.open(pdfUrl, "_blank");
+          if (printWindow) {
+            printWindow.onload = () => {
+              printWindow.print();
+            };
+            toast.success(`Impression de la facture ${invoiceInfo.id}`);
+          } else {
+            toast.error("Impossible d'ouvrir la fenêtre d'impression");
+          }
+        } else {
+          toast.error("Erreur lors de la préparation du PDF pour impression");
+        }
+      } else {
+        toast.error("Erreur lors de la génération du PDF");
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'impression de la facture:", error);
+      toast.error("Erreur lors de l'impression de la facture");
+    }
+  };
+
+  // Obtenir le statut visuel d'une facture
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return <Badge variant="secondary">En attente</Badge>;
+      case "submitted":
+        return <Badge variant="primary">Soumis</Badge>;
+      case "paid":
+        return <Badge variant="default" className="bg-green-500">Payé</Badge>;
+      case "rejected":
+        return <Badge variant="destructive">Rejeté</Badge>;
+      default:
+        return <Badge>{status}</Badge>;
+    }
   };
 
   return (
@@ -231,7 +361,8 @@ const BillingPage = () => {
           <CardContent>
             {isLoading ? (
               <div className="flex justify-center py-8">
-                <p>Chargement des données...</p>
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-2">Chargement des données...</span>
               </div>
             ) : (
               <Form {...form}>
@@ -251,9 +382,9 @@ const BillingPage = () => {
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                               >
                                 <option value="">Sélectionnez un patient</option>
-                                {patients.map((patient) => (
+                                {patientsData.map((patient) => (
                                   <option key={patient.id} value={patient.id}>
-                                    {patient.name}
+                                    {`${patient.last_name} ${patient.first_name}`}
                                   </option>
                                 ))}
                               </select>
@@ -262,7 +393,7 @@ const BillingPage = () => {
                               type="button" 
                               variant="outline" 
                               size="icon"
-                              onClick={() => toast.info("Gestion des patients")}
+                              onClick={() => window.location.href = "/patients"}
                             >
                               <User size={16} />
                             </Button>
@@ -287,7 +418,7 @@ const BillingPage = () => {
                               type="button" 
                               variant="outline" 
                               size="icon"
-                              onClick={() => toast.info("Voir le calendrier")}
+                              onClick={() => window.location.href = "/calendar"}
                             >
                               <Calendar size={16} />
                             </Button>
@@ -489,62 +620,90 @@ const BillingPage = () => {
         </Card>
       </div>
       
-      {/* Aperçu des factures générées */}
-      {previewInvoices.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Receipt size={18} />
-              Facturations générées
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Référence</TableHead>
-                  <TableHead>Patient</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Actes</TableHead>
-                  <TableHead>Majorations</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {previewInvoices.map((invoice, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{invoice.id}</TableCell>
-                    <TableCell>{invoice.patient}</TableCell>
-                    <TableCell>{invoice.date}</TableCell>
-                    <TableCell>{invoice.acts}</TableCell>
-                    <TableCell>{invoice.majorations || "-"}</TableCell>
-                    <TableCell className="font-semibold">{invoice.total}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleDownloadInvoice(invoice)}
-                        >
-                          <Download size={16} />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handlePrintInvoice(invoice)}
-                        >
-                          <Printer size={16} />
-                        </Button>
-                      </div>
-                    </TableCell>
+      {/* Liste des facturations générées */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Receipt size={18} />
+            Facturations générées
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingBilling ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2">Chargement des facturations...</span>
+            </div>
+          ) : (
+            billingRecords.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Référence</TableHead>
+                    <TableHead>Patient</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Soins</TableHead>
+                    <TableHead>Montant</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+                </TableHeader>
+                <TableBody>
+                  {billingRecords.map((record) => {
+                    const patientName = record.patients ? 
+                      `${record.patients.first_name} ${record.patients.last_name}` : 
+                      "Patient inconnu";
+                    
+                    return (
+                      <TableRow key={record.id}>
+                        <TableCell className="font-medium">
+                          {record.id.substring(0, 8)}
+                        </TableCell>
+                        <TableCell>{patientName}</TableCell>
+                        <TableCell>
+                          {format(new Date(record.created_at), "dd/MM/yyyy")}
+                        </TableCell>
+                        <TableCell>{record.care_code}</TableCell>
+                        <TableCell className="font-semibold">
+                          {parseFloat(record.total_amount || 0).toFixed(2)}€
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(record.payment_status)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleDownloadInvoice(record)}
+                            >
+                              <Download size={16} className="mr-2" />
+                              PDF
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handlePrintInvoice(record)}
+                            >
+                              <Printer size={16} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <AlertCircle className="mx-auto h-12 w-12 mb-4 text-muted-foreground/60" />
+                <p>Aucune facturation n'a été créée</p>
+                <p className="text-sm mt-2">Créez votre première facturation en utilisant le formulaire ci-dessus</p>
+              </div>
+            )
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
