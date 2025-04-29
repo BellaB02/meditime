@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Round } from "@/types/rounds";
+import { Round, RoundStop } from "@/types/rounds";
 import { toast } from "sonner";
 
 // Initial mock data
@@ -79,6 +79,9 @@ export const useRounds = () => {
   const [rounds, setRounds] = useState<Round[]>(initialRounds);
   const [showCompleteAnimation, setShowCompleteAnimation] = useState(false);
   const [showStartAnimation, setShowStartAnimation] = useState(false);
+  const [isCreateRoundDialogOpen, setIsCreateRoundDialogOpen] = useState(false);
+  const [isEditRoundDialogOpen, setIsEditRoundDialogOpen] = useState(false);
+  const [currentRound, setCurrentRound] = useState<Round | null>(null);
   
   // Start a round
   const handleStartRound = (roundId: string) => {
@@ -153,6 +156,7 @@ export const useRounds = () => {
           ? { 
               ...round, 
               completed: true, 
+              started: false,
               stops: round.stops.map(stop => ({ ...stop, completed: true })) 
             } 
           : round
@@ -169,17 +173,64 @@ export const useRounds = () => {
     window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`, '_blank');
     toast.info(`Navigation vers : ${address}`);
   };
+  
+  // Create a new round
+  const handleCreateRound = (round: Omit<Round, 'id'>) => {
+    const newRound: Round = {
+      ...round,
+      id: `round-${Date.now()}`,
+      completed: false,
+      started: false
+    };
+    
+    setRounds(prev => [...prev, newRound]);
+    setIsCreateRoundDialogOpen(false);
+    toast.success(`Tournée "${round.name}" créée avec succès`);
+  };
+  
+  // Update an existing round
+  const handleUpdateRound = (updatedRound: Round) => {
+    setRounds(prev => 
+      prev.map(round => 
+        round.id === updatedRound.id ? updatedRound : round
+      )
+    );
+    
+    setIsEditRoundDialogOpen(false);
+    toast.success(`Tournée "${updatedRound.name}" mise à jour`);
+  };
+  
+  // Delete a round
+  const handleDeleteRound = (roundId: string) => {
+    setRounds(prev => prev.filter(round => round.id !== roundId));
+    toast.success("Tournée supprimée");
+  };
+  
+  // Open the edit round dialog
+  const handleOpenEditRound = (round: Round) => {
+    setCurrentRound(round);
+    setIsEditRoundDialogOpen(true);
+  };
 
   return {
     rounds,
+    currentRound,
     showCompleteAnimation,
     showStartAnimation,
+    isCreateRoundDialogOpen,
+    isEditRoundDialogOpen,
     setShowCompleteAnimation,
     setShowStartAnimation,
+    setIsCreateRoundDialogOpen,
+    setIsEditRoundDialogOpen,
     handleStartRound,
     handleCompleteStop,
     handleReactivateStop,
     handleCompleteRound,
-    handleNavigateToAddress
+    handleNavigateToAddress,
+    handleCreateRound,
+    handleUpdateRound,
+    handleDeleteRound,
+    handleOpenEditRound
   };
 };

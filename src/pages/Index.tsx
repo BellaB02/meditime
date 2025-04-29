@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Calendar, MapPin, Clock, ChevronRight, CheckCircle2, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -8,9 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../App";
 
 export default function Index() {
   const navigate = useNavigate();
+  const { userType } = useContext(AuthContext);
+  
+  // Sample user data (à remplacer par l'authentification réelle)
+  const userData = {
+    firstName: "Thomas",
+    lastName: "Dubois"
+  };
+  
   // Sample data for appointments
   const [todayAppointments, setTodayAppointments] = useState([
     {
@@ -64,6 +72,13 @@ export default function Index() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <div className="flex items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Bonjour, {userData.firstName} {userData.lastName}</h1>
+          <p className="text-muted-foreground">Bienvenue sur votre tableau de bord</p>
+        </div>
+      </div>
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 dark:from-blue-900/20 dark:to-blue-800/20 dark:border-blue-800">
           <CardHeader className="pb-2">

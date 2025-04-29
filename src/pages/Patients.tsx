@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +11,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus, Phone, Clock, Calendar, FileText } from "lucide-react";
+import { Search, UserPlus, Phone, Clock, Calendar, FileText, MapPin } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import AddPatientForm from "@/components/patients/AddPatientForm";
 import { toast } from "sonner";
@@ -77,6 +76,19 @@ const Patients = () => {
       patient.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       patient.address.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
+  // Fonction pour appeler un patient
+  const handleCallPatient = (phone: string) => {
+    window.location.href = `tel:${phone.replace(/\s/g, '')}`;
+    toast.info(`Appel vers ${phone}`);
+  };
+  
+  // Fonction pour naviguer vers l'adresse d'un patient
+  const handleNavigateToAddress = (address: string) => {
+    const encodedAddress = encodeURIComponent(address);
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`, '_blank');
+    toast.info(`Navigation vers : ${address}`);
+  };
 
   // Gérer l'ajout d'un nouveau patient
   const handleAddPatient = () => {
@@ -175,12 +187,25 @@ const Patients = () => {
                   <TableRow key={patient.id}>
                     <TableCell className="font-medium">{patient.firstName} {patient.name}</TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <div className="flex items-center gap-2">
+                      <button 
+                        className="flex items-center gap-2 hover:text-primary hover:underline"
+                        onClick={() => handleCallPatient(patient.phone)}
+                        title="Appeler ce patient"
+                      >
                         <Phone size={14} />
                         {patient.phone}
-                      </div>
+                      </button>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">{patient.address}</TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <button 
+                        className="flex items-center gap-2 hover:text-primary hover:underline"
+                        onClick={() => handleNavigateToAddress(patient.address)}
+                        title="Naviguer vers cette adresse"
+                      >
+                        <MapPin size={14} />
+                        {patient.address}
+                      </button>
+                    </TableCell>
                     <TableCell className="hidden sm:table-cell">{patient.lastVisit}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

@@ -11,11 +11,11 @@ import {
   PlusCircle, User, Building, Edit, Trash, Users, UserPlus, Mail, Phone, Map
 } from "lucide-react";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { usePractice } from "@/contexts/PracticeContext";
+import { usePractice } from "@/hooks/usePractice";
 import { toast } from "sonner";
 
 export default function Practice() {
-  const { practice, members, addMember, removeMember } = usePractice();
+  const { practice, members, addMember, removeMember, updatePractice } = usePractice();
   const [activeTab, setActiveTab] = useState("info");
   const [isNewMemberDialogOpen, setIsNewMemberDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -23,22 +23,23 @@ export default function Practice() {
   const handleAddNewMember = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Simuler l'ajout d'un nouveau membre
+    // Récupérer les données du formulaire
+    const formData = new FormData(e.target as HTMLFormElement);
     const newMember = {
-      id: `member-${Date.now()}`,
-      name: (e.target as any).memberName.value,
-      role: (e.target as any).memberRole.value,
-      email: (e.target as any).memberEmail.value,
-      phone: (e.target as any).memberPhone.value
+      name: formData.get("memberName") as string,
+      role: formData.get("memberRole") as string,
+      email: formData.get("memberEmail") as string,
+      phone: formData.get("memberPhone") as string
     };
     
+    // Ajouter le membre
     addMember(newMember);
     setIsNewMemberDialogOpen(false);
     toast.success(`${newMember.name} a été ajouté au cabinet`);
   };
   
   const handleRemoveMember = (memberId: string, memberName: string) => {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer ${memberName} du cabinet ?`)) {
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${memberName} du cabinet ?`)) {
       removeMember(memberId);
       toast.success(`${memberName} a été supprimé du cabinet`);
     }
@@ -46,6 +47,18 @@ export default function Practice() {
   
   const handleSavePracticeInfo = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Récupérer les données du formulaire
+    const formData = new FormData(e.target as HTMLFormElement);
+    const updatedPractice = {
+      name: formData.get("practiceName") as string,
+      email: formData.get("practiceEmail") as string,
+      phone: formData.get("practicePhone") as string,
+      address: formData.get("practiceAddress") as string
+    };
+    
+    // Mettre à jour le cabinet
+    updatePractice(updatedPractice);
     setEditMode(false);
     toast.success("Informations du cabinet mises à jour");
   };
@@ -101,7 +114,8 @@ export default function Practice() {
                     <div>
                       <Label htmlFor="practiceName">Nom du cabinet</Label>
                       <Input 
-                        id="practiceName" 
+                        id="practiceName"
+                        name="practiceName"
                         defaultValue={practice.name} 
                         readOnly={!editMode} 
                         className={!editMode ? "bg-secondary/20" : ""}
@@ -111,6 +125,7 @@ export default function Practice() {
                       <Label htmlFor="practiceEmail">Email</Label>
                       <Input 
                         id="practiceEmail"
+                        name="practiceEmail"
                         type="email" 
                         defaultValue={practice.email}
                         readOnly={!editMode}
@@ -120,7 +135,8 @@ export default function Practice() {
                     <div>
                       <Label htmlFor="practicePhone">Téléphone</Label>
                       <Input 
-                        id="practicePhone" 
+                        id="practicePhone"
+                        name="practicePhone"
                         defaultValue={practice.phone}
                         readOnly={!editMode}
                         className={!editMode ? "bg-secondary/20" : ""}
@@ -129,7 +145,8 @@ export default function Practice() {
                     <div>
                       <Label htmlFor="practiceAddress">Adresse</Label>
                       <Input 
-                        id="practiceAddress" 
+                        id="practiceAddress"
+                        name="practiceAddress"
                         defaultValue={practice.address}
                         readOnly={!editMode}
                         className={!editMode ? "bg-secondary/20" : ""}
@@ -196,11 +213,15 @@ export default function Practice() {
                     <form onSubmit={handleAddNewMember} className="space-y-4 py-4">
                       <div>
                         <Label htmlFor="memberName">Nom complet</Label>
-                        <Input id="memberName" placeholder="Jean Dupont" required />
+                        <Input id="memberName" name="memberName" placeholder="Jean Dupont" required />
                       </div>
                       <div>
                         <Label htmlFor="memberRole">Rôle</Label>
-                        <select id="memberRole" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">
+                        <select 
+                          id="memberRole" 
+                          name="memberRole"
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                        >
                           <option value="nurse">Infirmier</option>
                           <option value="secretary">Secrétaire</option>
                           <option value="admin">Administrateur</option>
@@ -208,11 +229,11 @@ export default function Practice() {
                       </div>
                       <div>
                         <Label htmlFor="memberEmail">Email</Label>
-                        <Input id="memberEmail" type="email" placeholder="jean.dupont@exemple.com" required />
+                        <Input id="memberEmail" name="memberEmail" type="email" placeholder="jean.dupont@exemple.com" required />
                       </div>
                       <div>
                         <Label htmlFor="memberPhone">Téléphone</Label>
-                        <Input id="memberPhone" placeholder="06 12 34 56 78" required />
+                        <Input id="memberPhone" name="memberPhone" placeholder="06 12 34 56 78" required />
                       </div>
                       <DialogFooter>
                         <Button type="submit">Ajouter</Button>
@@ -268,10 +289,14 @@ export default function Practice() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
+                        <button 
+                          className="flex items-center gap-1 hover:text-primary hover:underline"
+                          onClick={() => window.location.href = `tel:${member.phone.replace(/\s/g, '')}`}
+                          title="Appeler ce membre"
+                        >
                           <Phone size={14} className="text-muted-foreground" />
                           {member.phone}
-                        </div>
+                        </button>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -279,7 +304,11 @@ export default function Practice() {
                             <Edit size={16} className="mr-2" />
                             Modifier
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleRemoveMember(member.id, member.name)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveMember(member.id, member.name)}
+                          >
                             <Trash size={16} className="mr-2" />
                             Supprimer
                           </Button>
