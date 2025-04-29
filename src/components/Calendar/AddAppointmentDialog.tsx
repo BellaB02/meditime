@@ -28,13 +28,31 @@ export const AddAppointmentDialog = ({ isOpen, onClose, onAddAppointment, patien
   // Charger la liste des patients
   useEffect(() => {
     if (isOpen) {
-      setPatients(PatientService.getAllPatients());
+      // Utilisation de la version synchrone pour la rétrocompatibilité immédiate
+      const patientsSync = PatientService.getAllPatientsSync();
+      setPatients(patientsSync);
       
       if (patientId) {
         setSelectedPatientId(patientId);
       } else {
-        setSelectedPatientId(patients.length > 0 ? patients[0].id : "");
+        setSelectedPatientId(patientsSync.length > 0 ? patientsSync[0].id : "");
       }
+      
+      // Ensuite charger depuis Supabase de manière asynchrone
+      const loadPatients = async () => {
+        try {
+          const patientList = await PatientService.getAllPatients();
+          setPatients(patientList);
+          
+          if (!patientId && patientList.length > 0) {
+            setSelectedPatientId(patientList[0].id);
+          }
+        } catch (error) {
+          console.error("Error loading patients:", error);
+        }
+      };
+      
+      loadPatients();
     }
   }, [isOpen, patientId]);
   

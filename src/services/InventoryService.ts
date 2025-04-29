@@ -210,7 +210,12 @@ export const InventoryService = {
         .order('created_at', { ascending: false });
         
       if (error) throw error;
-      return data;
+      
+      // Conversion des données de Supabase vers notre type InventoryTransaction
+      return data.map(tx => ({
+        ...tx,
+        transaction_type: tx.transaction_type as "stock_in" | "stock_out" | "adjustment" | "expired"
+      }));
     } catch (err) {
       console.error(`Erreur lors de la récupération des transactions pour l'article ${itemId}:`, err);
       toast.error("Erreur lors du chargement de l'historique des transactions");
@@ -226,7 +231,7 @@ export const InventoryService = {
       const { data, error } = await supabase
         .from('inventory_items')
         .select('*')
-        .lt('current_quantity', supabase.raw('min_quantity'));
+        .filter('current_quantity', 'lt', 'min_quantity');
         
       if (error) throw error;
       return data;

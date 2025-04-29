@@ -26,7 +26,21 @@ export const PatientService = {
         return undefined;
       }
       
-      return data as PatientInfo;
+      // Conversion du format Supabase en PatientInfo
+      return {
+        id: data.id,
+        name: data.last_name,
+        firstName: data.first_name,
+        address: data.address || '',
+        phoneNumber: data.phone || '',
+        socialSecurityNumber: data.social_security_number || '',
+        dateOfBirth: data.date_of_birth || '',
+        email: data.email || '',
+        doctor: data.doctor || '',
+        medicalNotes: data.medical_notes || '',
+        insurance: data.insurance || '',
+        status: data.status as "active" | "inactive" | "urgent"
+      };
     } catch (err) {
       console.error("Error in getPatientInfo:", err);
       toast.error("Erreur lors du chargement des informations patient");
@@ -47,25 +61,36 @@ export const PatientService = {
         return [];
       }
       
+      // Conversion du format Supabase en PatientInfo[]
       return data.map(patient => ({
         id: patient.id,
-        name: `${patient.last_name}`,
+        name: patient.last_name,
         firstName: patient.first_name,
-        address: patient.address,
-        phoneNumber: patient.phone,
-        socialSecurityNumber: patient.social_security_number,
-        dateOfBirth: patient.date_of_birth,
-        email: patient.email,
-        doctor: patient.doctor,
-        medicalNotes: patient.medical_notes,
-        insurance: patient.insurance,
-        status: patient.status as "active" | "inactive" | "urgent"
+        address: patient.address || '',
+        phoneNumber: patient.phone || '',
+        socialSecurityNumber: patient.social_security_number || '',
+        dateOfBirth: patient.date_of_birth || '',
+        email: patient.email || '',
+        doctor: patient.doctor || '',
+        medicalNotes: patient.medical_notes || '',
+        insurance: patient.insurance || '',
+        status: (patient.status as "active" | "inactive" | "urgent") || 'active'
       }));
     } catch (err) {
       console.error("Error in getAllPatients:", err);
       toast.error("Erreur lors du chargement de la liste des patients");
       return [];
     }
+  },
+  
+  // Pour la rétrocompatibilité, ajoutons une version synchrone qui renvoie des données en mémoire
+  // Cette fonction sera utilisée par les composants qui n'ont pas encore été mis à jour
+  getAllPatientsSync: (): PatientInfo[] => {
+    return PatientInfoService.getAllPatients();
+  },
+  
+  getPatientInfoSync: (patientId?: string): PatientInfo | undefined => {
+    return PatientInfoService.getPatientInfo(patientId);
   },
   
   addPatient: async (patient: Omit<PatientInfo, 'id'>): Promise<string> => {

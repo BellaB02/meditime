@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,11 +34,22 @@ interface Patient {
 const Patients = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddPatientOpen, setIsAddPatientOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const [patients, setPatients] = useState<Patient[]>(() => {
-    // Convertir les données du PatientService en format compatible
-    return PatientService.getAllPatients().map(patientInfo => ({
+  const [patients, setPatients] = useState<Patient[]>([]);
+
+  // Charger les patients au démarrage
+  useEffect(() => {
+    loadPatients();
+  }, []);
+  
+  // Simuler le chargement des données
+  const loadPatients = () => {
+    setIsLoading(true);
+    
+    // Utiliser d'abord les données en mémoire (version synchrone)
+    const patientsSync = PatientService.getAllPatientsSync();
+    const convertedPatients = patientsSync.map(patientInfo => ({
       id: patientInfo.id,
       name: patientInfo.name,
       firstName: patientInfo.firstName || "",
@@ -47,26 +59,31 @@ const Patients = () => {
       nextVisit: ["Demain, 10:15", "Dans 2 jours", "Aujourd'hui, 14:00"][Math.floor(Math.random() * 3)],
       status: ["regular", "urgent", "inactive"][Math.floor(Math.random() * 3)] as "regular" | "urgent" | "inactive"
     }));
-  });
-  
-  // Simuler le chargement des données
-  const loadPatients = () => {
-    setIsLoading(true);
     
-    setTimeout(() => {
-      const patientInfos = PatientService.getAllPatients();
-      setPatients(patientInfos.map(patientInfo => ({
-        id: patientInfo.id,
-        name: patientInfo.name,
-        firstName: patientInfo.firstName || "",
-        phone: patientInfo.phoneNumber || "",
-        address: patientInfo.address || "",
-        lastVisit: ["Aujourd'hui", "Hier", "Il y a 3 jours"][Math.floor(Math.random() * 3)],
-        nextVisit: ["Demain, 10:15", "Dans 2 jours", "Aujourd'hui, 14:00"][Math.floor(Math.random() * 3)],
-        status: ["regular", "urgent", "inactive"][Math.floor(Math.random() * 3)] as "regular" | "urgent" | "inactive"
-      })));
-      setIsLoading(false);
-    }, 1000);
+    setPatients(convertedPatients);
+    
+    // Puis charger depuis Supabase
+    const loadFromSupabase = async () => {
+      try {
+        const patientInfos = await PatientService.getAllPatients();
+        setPatients(patientInfos.map(patientInfo => ({
+          id: patientInfo.id,
+          name: patientInfo.name,
+          firstName: patientInfo.firstName || "",
+          phone: patientInfo.phoneNumber || "",
+          address: patientInfo.address || "",
+          lastVisit: ["Aujourd'hui", "Hier", "Il y a 3 jours"][Math.floor(Math.random() * 3)],
+          nextVisit: ["Demain, 10:15", "Dans 2 jours", "Aujourd'hui, 14:00"][Math.floor(Math.random() * 3)],
+          status: ["regular", "urgent", "inactive"][Math.floor(Math.random() * 3)] as "regular" | "urgent" | "inactive"
+        })));
+      } catch (error) {
+        console.error("Error loading patients:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadFromSupabase();
   };
   
   // Filtrer les patients en fonction de la recherche

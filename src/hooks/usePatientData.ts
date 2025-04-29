@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { PatientInfo, PatientService, Prescription } from "@/services/PatientService";
 import { Visit } from "@/components/patient/VisitsTab";
@@ -22,6 +23,8 @@ export const usePatientData = (patientId?: string) => {
   const [vitalSigns, setVitalSigns] = useState<LegacyVitalSign[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [medicalNotes, setMedicalNotes] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  
   const { user } = useAuth();
   const { usePatient, usePatientVitalSigns, useUpdatePatient } = usePatientsService();
   
@@ -66,16 +69,35 @@ export const usePatientData = (patientId?: string) => {
   // Fetch patient data - using both Supabase and legacy data for compatibility
   useEffect(() => {
     if (patientId) {
-      // Fetch from legacy service for backward compatibility
-      const patient = PatientService.getPatientInfo(patientId);
-      if (patient) {
-        setPatientInfo(patient);
-        setMedicalNotes(patient.medicalNotes || "");
+      setIsLoading(true);
+      // Utiliser la version synchrone pour la rétrocompatibilité immédiate
+      const patientSync = PatientService.getPatientInfoSync(patientId);
+      if (patientSync) {
+        setPatientInfo(patientSync);
+        setMedicalNotes(patientSync.medicalNotes || "");
+        
         // Convertir les signes vitaux du service existant
         const legacyVitalSigns = PatientService.getVitalSigns(patientId);
         setVitalSigns(legacyVitalSigns);
         setPrescriptions(PatientService.getPrescriptions(patientId));
       }
+      
+      // Ensuite charger depuis Supabase de manière asynchrone
+      const loadPatientData = async () => {
+        try {
+          const patientData = await PatientService.getPatientInfo(patientId);
+          if (patientData) {
+            setPatientInfo(patientData);
+            setMedicalNotes(patientData.medicalNotes || "");
+          }
+        } catch (error) {
+          console.error("Error loading patient data:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      loadPatientData();
     }
   }, [patientId]);
   
@@ -218,7 +240,7 @@ export const usePatientData = (patientId?: string) => {
     medicalNotes,
     visits,
     patientForm,
-    isLoading: isLoadingPatient || isLoadingVitalSigns,
+    isLoading: isLoading || isLoadingPatient || isLoadingVitalSigns,
     handleCallPatient,
     handleNavigateToAddress,
     handleSavePatientInfo,

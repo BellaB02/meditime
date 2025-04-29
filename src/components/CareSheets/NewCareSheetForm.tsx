@@ -1,12 +1,12 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { PatientService } from "@/services/PatientService";
+import { PatientService, PatientInfo } from "@/services/PatientService";
 import { DocumentService } from "@/services/DocumentService";
 
 interface NewCareSheetFormProps {
@@ -19,9 +19,29 @@ export const NewCareSheetForm: React.FC<NewCareSheetFormProps> = ({ onClose }) =
   const [careType, setCareType] = useState("");
   const [careCode, setCareCode] = useState("");
   const [patientSearch, setPatientSearch] = useState("");
+  const [patients, setPatients] = useState<PatientInfo[]>([]);
+
+  // Chargement initial des patients
+  useEffect(() => {
+    // Utiliser la version synchrone pour la rétrocompatibilité immédiate
+    const patientsSync = PatientService.getAllPatientsSync();
+    setPatients(patientsSync);
+    
+    // Puis charger depuis Supabase
+    const loadPatients = async () => {
+      try {
+        const patientList = await PatientService.getAllPatients();
+        setPatients(patientList);
+      } catch (error) {
+        console.error("Error loading patients:", error);
+      }
+    };
+    
+    loadPatients();
+  }, []);
 
   // Patients filtrés selon la recherche
-  const filteredPatients = PatientService.getAllPatients().filter(p => 
+  const filteredPatients = patients.filter(p => 
     `${p.firstName} ${p.name}`.toLowerCase().includes(patientSearch.toLowerCase())
   );
 
@@ -35,7 +55,7 @@ export const NewCareSheetForm: React.FC<NewCareSheetFormProps> = ({ onClose }) =
 
   const handleSelectPatient = (id: string) => {
     setPatientId(id);
-    const patient = PatientService.getPatientInfo(id);
+    const patient = patients.find(p => p.id === id);
     if (patient) {
       setPatientSearch(`${patient.firstName} ${patient.name}`);
     }
@@ -59,8 +79,8 @@ export const NewCareSheetForm: React.FC<NewCareSheetFormProps> = ({ onClose }) =
     setLoading(true);
 
     try {
-      // Simulation de la création d'une feuille de soins
-      const patientInfo = PatientService.getPatientInfo(patientId);
+      // Récupérer les informations du patient
+      const patientInfo = patients.find(p => p.id === patientId);
       
       if (patientInfo) {
         // Générer la feuille de soins
