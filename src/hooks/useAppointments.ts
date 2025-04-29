@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Appointment } from "@/components/Calendar/AppointmentCard";
 import { DocumentService } from "@/services/DocumentService";
 
-// Données fictives
+// Sample data
 const appointmentsData: Appointment[] = [
   {
     id: "1",
@@ -84,6 +84,21 @@ export const useAppointments = () => {
   const addAppointment = (newAppointment: Appointment) => {
     try {
       setIsLoading(true);
+      
+      // Check if an appointment with the same patient, date and time already exists
+      const existingAppointment = appointments.find(
+        app => 
+          app.patient.id === newAppointment.patient.id && 
+          app.date.toDateString() === newAppointment.date.toDateString() &&
+          app.time === newAppointment.time
+      );
+      
+      if (existingAppointment) {
+        toast.error("Ce patient a déjà un rendez-vous à cette date et cette heure");
+        setIsLoading(false);
+        return;
+      }
+      
       setAppointments(prev => [...prev, newAppointment]);
       toast.success("Rendez-vous ajouté avec succès");
     } catch (err) {
@@ -105,10 +120,10 @@ export const useAppointments = () => {
         )
       );
       
-      // Trouver le rendez-vous pour obtenir les informations du patient
+      // Find the appointment to get patient information
       const appointment = appointments.find(app => app.id === appointmentId);
       if (appointment) {
-        // Générer une feuille de soins
+        // Generate care sheet
         DocumentService.generateCareSheet(
           appointmentId, 
           appointment.patient.name,
@@ -126,11 +141,22 @@ export const useAppointments = () => {
     }
   };
 
+  const getAppointmentsByPatientId = (patientId: string) => {
+    return appointments.filter(app => app.patient.id === patientId)
+      .sort((a, b) => {
+        // Sort by date and time
+        const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
+        if (dateCompare !== 0) return dateCompare;
+        return a.time.localeCompare(b.time);
+      });
+  };
+
   return {
     appointments,
     isLoading,
     error,
     getFilteredAppointments,
+    getAppointmentsByPatientId,
     addAppointment,
     markAppointmentAsCompleted
   };

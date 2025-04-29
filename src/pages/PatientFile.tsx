@@ -14,6 +14,8 @@ import EditPatientDialog from "@/components/patient/dialogs/EditPatientDialog";
 import { AddAppointmentDialog } from "@/components/Calendar/AddAppointmentDialog";
 import { toast } from "sonner";
 import { useAppointments } from "@/hooks/useAppointments";
+import { PatientStatusToggle } from "@/components/patient/PatientStatusToggle";
+import { PatientService } from "@/services/PatientService";
 
 const PatientFile = () => {
   const { id } = useParams<{ id: string }>();
@@ -61,6 +63,12 @@ const PatientFile = () => {
       }, 1500);
     }
   };
+  
+  const handleStatusChange = (newStatus: "active" | "inactive" | "urgent") => {
+    if (id && patientInfo) {
+      PatientService.updatePatientStatus(id, newStatus);
+    }
+  };
 
   if (!patientInfo) {
     return (
@@ -87,6 +95,11 @@ const PatientFile = () => {
           <p className="text-sm text-muted-foreground">Dossier patient</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <PatientStatusToggle 
+            patientId={id || ""}
+            initialStatus={patientInfo.status || "active"}
+            onStatusChange={handleStatusChange}
+          />
           <Button variant="outline" onClick={() => setIsAddAppointmentOpen(true)}>
             <Calendar className="mr-2 h-4 w-4" />
             Ajouter RDV
