@@ -35,7 +35,7 @@ export const DocumentService = {
     // Si preFilled est true, générer un PDF pré-rempli personnalisé
     if (preFilled && patientId) {
       // Récupérer les ordonnances associées au patient
-      const prescriptions = this.getPatientPrescriptions(patientId);
+      const prescriptions = DocumentService.getPatientPrescriptions(patientId);
       
       const doc = PDFGenerationService.generatePrefilledPDF(patientId, careInfo, prescriptions);
       
@@ -84,8 +84,8 @@ export const DocumentService = {
         toast.info(`Feuille de soins pré-remplie avec les données suivantes:`, {
           description: `
             Patient: ${patientInfo.name}
-            Adresse: ${patientInfo.address}
-            Numéro SS: ${patientInfo.socialSecurityNumber}
+            Adresse: ${patientInfo.address || 'Non renseignée'}
+            Numéro SS: ${patientInfo.socialSecurityNumber || 'Non renseigné'}
             Type de soin: ${careInfo?.type || 'Non spécifié'}
             Date: ${careInfo?.date || DateFormatService.formatCurrentDate()}
           `,
@@ -101,7 +101,7 @@ export const DocumentService = {
     // Si preFilled est true, générer un PDF pré-rempli pour impression
     if (preFilled && patientId) {
       // Récupérer les ordonnances associées au patient
-      const prescriptions = this.getPatientPrescriptions(patientId);
+      const prescriptions = DocumentService.getPatientPrescriptions(patientId);
       
       const doc = PDFGenerationService.generatePrefilledPDF(patientId, careInfo, prescriptions);
       
@@ -140,8 +140,8 @@ export const DocumentService = {
         // Notification détaillée des informations utilisées
         toast.info(`Document pré-rempli pour impression avec les données de ${patientInfo.name}`, {
           description: `
-            Adresse: ${patientInfo.address}
-            Numéro SS: ${patientInfo.socialSecurityNumber}
+            Adresse: ${patientInfo.address || 'Non renseignée'}
+            Numéro SS: ${patientInfo.socialSecurityNumber || 'Non renseigné'}
             Type de soin: ${careInfo?.type || 'Non spécifié'}
             Date: ${careInfo?.date || DateFormatService.formatCurrentDate()}
           `,
@@ -196,7 +196,7 @@ export const DocumentService = {
     const patientInfo = patientId ? PatientService.getPatientInfo(patientId) : undefined;
     
     // Récupérer les ordonnances associées au patient
-    const prescriptions = patientId ? this.getPatientPrescriptions(patientId) : [];
+    const prescriptions = patientId ? DocumentService.getPatientPrescriptions(patientId) : [];
     
     // Notification plus détaillée des informations utilisées pour la feuille de soins
     if (patientInfo) {
