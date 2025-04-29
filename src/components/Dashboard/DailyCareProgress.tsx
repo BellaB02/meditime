@@ -4,15 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, Clock } from "lucide-react";
 
 interface DailyCareProgressProps {
-  completed: number;
-  total: number;
+  completed?: number;
+  total?: number;
+  className?: string;
 }
 
-export const DailyCareProgress = ({ completed, total }: DailyCareProgressProps) => {
+export const DailyCareProgress = ({ completed = 5, total = 8, className }: DailyCareProgressProps) => {
   const progressPercentage = total > 0 ? Math.round((completed / total) * 100) : 0;
   
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center gap-2">
           <Clock size={18} className="text-primary" />

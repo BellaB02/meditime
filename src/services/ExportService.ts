@@ -4,6 +4,17 @@ import { VitalSign } from './VitalSignsService';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
+// Define adapter function to convert DB vital signs to our app structure
+const adaptVitalSigns = (dbVitalSigns: any[]): VitalSign[] => {
+  return dbVitalSigns.map(vs => ({
+    date: vs.recorded_at ? format(new Date(vs.recorded_at), 'dd/MM/yyyy HH:mm', { locale: fr }) : '',
+    temperature: vs.temperature ? `${vs.temperature}°C` : '',
+    heartRate: vs.heart_rate ? `${vs.heart_rate} bpm` : '',
+    bloodPressure: vs.blood_pressure || '',
+    notes: vs.notes || ''
+  }));
+};
+
 export const ExportService = {
   /**
    * Exporte les données patient au format CSV
@@ -28,17 +39,13 @@ export const ExportService = {
     // Signes vitaux
     if (vitalSigns.length > 0) {
       csvContent += `Signes vitaux\n`;
-      csvContent += `Date,Température,Rythme cardiaque,Pression artérielle,Glycémie,Saturation O2,Niveau de douleur,Notes\n`;
+      csvContent += `Date,Température,Rythme cardiaque,Pression artérielle,Notes\n`;
       
       vitalSigns.forEach(vs => {
-        const date = vs.recorded_at ? format(new Date(vs.recorded_at), 'dd/MM/yyyy HH:mm', { locale: fr }) : '';
-        csvContent += `${date},`;
+        csvContent += `${vs.date || ''},`;
         csvContent += `${vs.temperature || ''},`;
-        csvContent += `${vs.heart_rate || ''},`;
-        csvContent += `${vs.blood_pressure || ''},`;
-        csvContent += `${vs.blood_sugar || ''},`;
-        csvContent += `${vs.oxygen_saturation || ''},`;
-        csvContent += `${vs.pain_level || ''},`;
+        csvContent += `${vs.heartRate || ''},`;
+        csvContent += `${vs.bloodPressure || ''},`;
         csvContent += `${(vs.notes || '').replace(/,/g, ' ').replace(/\n/g, ' ')}\n`;
       });
     }
@@ -83,7 +90,8 @@ export const ExportService = {
   /**
    * Exporte les données patient dans un fichier CSV
    */
-  downloadPatientAsCSV: (patient: PatientInfo, vitalSigns: VitalSign[] = []): void => {
+  downloadPatientAsCSV: (patient: PatientInfo, dbVitalSigns: any[] = []): void => {
+    const vitalSigns = adaptVitalSigns(dbVitalSigns);
     const csvContent = ExportService.exportPatientToCSV(patient, vitalSigns);
     const filename = `patient_${patient.id}_${new Date().getTime()}.csv`;
     
@@ -93,7 +101,8 @@ export const ExportService = {
   /**
    * Exporte les données patient dans un fichier JSON
    */
-  downloadPatientAsJSON: (patient: PatientInfo, vitalSigns: VitalSign[] = []): void => {
+  downloadPatientAsJSON: (patient: PatientInfo, dbVitalSigns: any[] = []): void => {
+    const vitalSigns = adaptVitalSigns(dbVitalSigns);
     const jsonContent = ExportService.exportPatientToJSON(patient, vitalSigns);
     const filename = `patient_${patient.id}_${new Date().getTime()}.json`;
     

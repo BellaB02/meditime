@@ -10,7 +10,6 @@ import {
 import { Download, FileJson, FileSpreadsheet, Loader2 } from "lucide-react";
 import { ExportService } from '@/services/ExportService';
 import { PatientInfo } from '@/services/PatientInfoService';
-import { VitalSign } from '@/integrations/supabase/services/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -37,10 +36,10 @@ const ExportDataButton = ({ patient, className }: ExportDataButtonProps) => {
       
       // Exporter selon le format choisi
       if (format === 'csv') {
-        ExportService.downloadPatientAsCSV(patient, vitalSigns as VitalSign[]);
+        ExportService.downloadPatientAsCSV(patient, vitalSigns || []);
         toast.success("Données exportées en CSV avec succès");
       } else {
-        ExportService.downloadPatientAsJSON(patient, vitalSigns as VitalSign[]);
+        ExportService.downloadPatientAsJSON(patient, vitalSigns || []);
         toast.success("Données exportées en JSON avec succès");
       }
     } catch (err) {
