@@ -1,3 +1,4 @@
+
 // Define the Document type if it doesn't exist already
 export interface Document {
   id: string;
@@ -10,6 +11,7 @@ export interface Document {
     type: string;
     code: string;
     description: string;
+    date?: string; // Add optional date property to careInfo
   };
 }
 

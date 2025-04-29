@@ -15,7 +15,7 @@ export type VitalSignsTabProps = {
   patientId?: string; // Add patientId as an optional prop
 };
 
-const VitalSignsTab: React.FC<VitalSignsTabProps> = ({ vitalSigns: initialVitalSigns, patientId }) => {
+const VitalSignsTab: React.FC<VitalSignsTabProps> = ({ vitalSigns: initialVitalSigns = [], patientId }) => {
   const [vitalSigns, setVitalSigns] = useState<LegacyVitalSign[]>(initialVitalSigns);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);

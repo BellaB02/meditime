@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -172,7 +171,7 @@ const PatientFile = () => {
           <CareSheetsTab patientId={id || ""}/>
         </TabsContent>
         <TabsContent value="vitalsigns">
-          <VitalSignsTab patientId={id || ""}/>
+          <VitalSignsTab patientId={id || ""} vitalSigns={vitalSigns} />
         </TabsContent>
         <TabsContent value="documents">
           <DocumentsTab patientId={id || ""}/>
