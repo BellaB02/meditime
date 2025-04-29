@@ -10,6 +10,7 @@ import Patients from "./pages/Patients";
 import Calendar from "./pages/Calendar";
 import PatientFile from "./pages/PatientFile";
 import AdminTasks from "./pages/AdminTasks";
+import BillingPage from "./pages/BillingPage";
 import { SidebarProvider } from "./components/Layout/SidebarProvider";
 import Layout from "./components/Layout/Layout";
 
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/patients/:id" element={<PatientFile />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/admin" element={<AdminTasks />} />
+              <Route path="/admin/billing" element={<BillingPage />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>

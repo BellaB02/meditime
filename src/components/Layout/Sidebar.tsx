@@ -1,6 +1,6 @@
 
 import { NavLink } from 'react-router-dom';
-import { Calendar, FileText, Users, Home, Clock, Stethoscope } from 'lucide-react';
+import { Calendar, FileText, Users, Home, Clock, Stethoscope, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSidebar } from './SidebarProvider';
 
@@ -60,6 +60,15 @@ const Sidebar = () => {
             >
               <FileText size={20} />
               {isOpen && <span>Administratif</span>}
+            </NavLink>
+          </li>
+          <li>
+            <NavLink 
+              to="/admin/billing" 
+              className={({isActive}) => cn('nav-link', isActive && 'active')}
+            >
+              <Receipt size={20} />
+              {isOpen && <span>Facturation</span>}
             </NavLink>
           </li>
         </ul>
