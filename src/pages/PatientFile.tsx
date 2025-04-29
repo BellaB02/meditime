@@ -1,15 +1,11 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Pencil, Plus, User, Calendar, ListChecks, HeartPulse, FileText, MessageSquare } from "lucide-react";
-import { PatientInfoService, PatientInfo } from "@/services/PatientInfoService";
-import { VitalSignsService, VitalSign } from "@/services/VitalSignsService";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Pencil, User, Calendar, ListChecks, HeartPulse, FileText, MessageSquare } from "lucide-react";
 import { PatientStatusToggle } from "@/components/patient/PatientStatusToggle";
 import VitalSignsTab from "@/components/patient/VitalSignsTab";
 import CareSheetsTab from "@/components/patient/CareSheetsTab";
@@ -21,80 +17,32 @@ import PhotosTab from "@/components/patient/PhotosTab";
 import SignatureTab from "@/components/patient/SignatureTab";
 import VitalSignsAlerts from "@/components/patient/VitalSignsAlerts";
 import CareChecklist from "@/components/care/CareChecklist";
-
-interface PatientFileProps {
-  patientId?: string;
-}
+import { usePatientDetails, PatientDetails } from "@/hooks/usePatientDetails";
+import { usePatientVitalSigns } from "@/hooks/usePatientVitalSigns";
+import EditPatientForm from "@/components/patient/EditPatientForm";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const PatientFile = () => {
   const { id } = useParams<{ id: string }>();
-  const [patientInfo, setPatientInfo] = useState<PatientInfo | undefined>(undefined);
-  const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([]);
   const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [name, setName] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [address, setAddress] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [socialSecurityNumber, setSocialSecurityNumber] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
-  const [email, setEmail] = useState("");
-  const [doctor, setDoctor] = useState("");
-  const [medicalNotes, setMedicalNotes] = useState("");
-  const [insurance, setInsurance] = useState("");
-  const [status, setStatus] = useState<"active" | "inactive" | "urgent">("active");
+  const patientId = id || "";
   
-  useEffect(() => {
-    if (id) {
-      const patient = PatientInfoService.getPatientInfo(id);
-      setPatientInfo(patient);
-      
-      if (patient) {
-        setName(patient.name);
-        setFirstName(patient.firstName || "");
-        setAddress(patient.address || "");
-        setPhoneNumber(patient.phoneNumber || "");
-        setSocialSecurityNumber(patient.socialSecurityNumber || "");
-        setDateOfBirth(patient.dateOfBirth || "");
-        setEmail(patient.email || "");
-        setDoctor(patient.doctor || "");
-        setMedicalNotes(patient.medicalNotes || "");
-        setInsurance(patient.insurance || "");
-        setStatus(patient.status || "active");
-      }
-      
-      const signs = VitalSignsService.getVitalSigns(id);
-      setVitalSigns(signs);
-    }
-  }, [id]);
+  // Get patient details using our hook
+  const { patientDetails, isLoading, updatePatient } = usePatientDetails(patientId);
   
-  const handleSave = () => {
-    if (id) {
-      PatientInfoService.updatePatient(id, {
-        name,
-        firstName,
-        address,
-        phoneNumber,
-        socialSecurityNumber,
-        dateOfBirth,
-        email,
-        doctor,
-        medicalNotes,
-        insurance,
-        status
-      });
-      setPatientInfo(PatientInfoService.getPatientInfo(id));
-      setOpenEditDialog(false);
-    }
+  // Get patient vital signs using another hook
+  const { vitalSigns } = usePatientVitalSigns(patientId);
+  
+  // Handle status change
+  const handleStatusChange = async (newStatus: "active" | "inactive" | "urgent") => {
+    await updatePatient({ status: newStatus });
   };
   
-  const handleStatusChange = (newStatus: "active" | "inactive" | "urgent") => {
-    setStatus(newStatus);
-    if (id && patientInfo) {
-      PatientInfoService.updatePatient(id, { ...patientInfo, status: newStatus });
-      setPatientInfo({ ...patientInfo, status: newStatus });
-    }
+  // Handle edit success
+  const handleEditSuccess = () => {
+    setOpenEditDialog(false);
   };
-  
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-start">
@@ -106,221 +54,199 @@ const PatientFile = () => {
         </div>
         
         <div className="flex gap-2">
-          {patientInfo && (
+          {isLoading ? (
+            <>
+              <Skeleton className="h-10 w-20" />
+              <Skeleton className="h-10 w-20" />
+              <Skeleton className="h-10 w-20" />
+            </>
+          ) : patientDetails && (
             <>
               <PatientStatusToggle 
-                patientId={id || ""}
-                initialStatus={patientInfo.status || "active"}
+                patientId={patientId}
+                initialStatus={patientDetails.status || "active"}
                 onStatusChange={handleStatusChange}
               />
-              <ExportDataButton patient={patientInfo} />
+              <ExportDataButton patient={{
+                id: patientDetails.id,
+                name: patientDetails.lastName,
+                firstName: patientDetails.firstName,
+                address: patientDetails.address,
+                phoneNumber: patientDetails.phone,
+                socialSecurityNumber: patientDetails.socialSecurityNumber,
+                dateOfBirth: patientDetails.dateOfBirth,
+                email: patientDetails.email,
+                doctor: patientDetails.doctor,
+                medicalNotes: patientDetails.medicalNotes,
+                insurance: patientDetails.insurance,
+                status: patientDetails.status
+              }} />
+              <Button variant="outline" onClick={() => setOpenEditDialog(true)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Modifier
+              </Button>
             </>
           )}
-          <Button variant="outline" onClick={() => setOpenEditDialog(true)}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Modifier
-          </Button>
         </div>
       </div>
       
-      <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList className="mb-6">
-          <TabsTrigger value="profile"><User className="h-4 w-4 mr-2" /> Profil</TabsTrigger>
-          <TabsTrigger value="appointments"><Calendar className="h-4 w-4 mr-2" /> Rendez-vous</TabsTrigger>
-          <TabsTrigger value="caresheets"><ListChecks className="h-4 w-4 mr-2" /> Feuilles de soins</TabsTrigger>
-          <TabsTrigger value="vitalsigns"><HeartPulse className="h-4 w-4 mr-2" /> Signes vitaux</TabsTrigger>
-          <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-2" /> Documents</TabsTrigger>
-          <TabsTrigger value="messaging"><MessageSquare className="h-4 w-4 mr-2" /> Messages</TabsTrigger>
-          <TabsTrigger value="photos">Photos</TabsTrigger>
-          <TabsTrigger value="signatures">Signatures</TabsTrigger>
-          <TabsTrigger value="vitalAlerts">Alertes</TabsTrigger>
-          <TabsTrigger value="checklists">Checklists</TabsTrigger>
-        </TabsList>
-        <TabsContent value="profile" className="space-y-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informations du patient</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label>Nom</Label>
-                <p className="text-sm font-medium">{patientInfo?.name}</p>
-              </div>
-              <div>
-                <Label>Prénom</Label>
-                <p className="text-sm font-medium">{patientInfo?.firstName}</p>
-              </div>
-              <div>
-                <Label>Adresse</Label>
-                <p className="text-sm font-medium">{patientInfo?.address}</p>
-              </div>
-              <div>
-                <Label>Téléphone</Label>
-                <p className="text-sm font-medium">{patientInfo?.phoneNumber}</p>
-              </div>
-              <div>
-                <Label>Numéro de sécurité sociale</Label>
-                <p className="text-sm font-medium">{patientInfo?.socialSecurityNumber}</p>
-              </div>
-              <div>
-                <Label>Date de naissance</Label>
-                <p className="text-sm font-medium">{patientInfo?.dateOfBirth}</p>
-              </div>
-              <div>
-                <Label>Email</Label>
-                <p className="text-sm font-medium">{patientInfo?.email}</p>
-              </div>
-              <div>
-                <Label>Médecin traitant</Label>
-                <p className="text-sm font-medium">{patientInfo?.doctor}</p>
-              </div>
-              <div>
-                <Label>Notes médicales</Label>
-                <p className="text-sm font-medium">{patientInfo?.medicalNotes}</p>
-              </div>
-              <div>
-                <Label>Assurance</Label>
-                <p className="text-sm font-medium">{patientInfo?.insurance}</p>
-              </div>
-              <div>
-                <Label>Statut</Label>
-                <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${
-                    patientInfo?.status === 'active' ? 'bg-green-500' :
-                    patientInfo?.status === 'urgent' ? 'bg-red-500' :
-                    'bg-gray-500'
-                  }`}></div>
-                  <p className="text-sm font-medium">
-                    {patientInfo?.status === 'active' ? 'Actif' :
-                     patientInfo?.status === 'urgent' ? 'Urgent' :
-                     patientInfo?.status === 'inactive' ? 'Inactif' : 'Non défini'}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="appointments">
-          <AppointmentsTab patientId={id || ""}/>
-        </TabsContent>
-        <TabsContent value="caresheets">
-          <CareSheetsTab patientId={id || ""}/>
-        </TabsContent>
-        <TabsContent value="vitalsigns">
-          <VitalSignsTab patientId={id || ""} vitalSigns={vitalSigns} />
-        </TabsContent>
-        <TabsContent value="documents">
-          <DocumentsTab patientId={id || ""}/>
-        </TabsContent>
-        <TabsContent value="messaging">
-          <MessagingTab />
-        </TabsContent>
-        <TabsContent value="photos">
-          <PhotosTab patientId={id || ""} />
-        </TabsContent>
-        <TabsContent value="signatures">
-          <SignatureTab patientId={id || ""} patientName={patientInfo?.firstName ? `${patientInfo.firstName} ${patientInfo.name}` : patientInfo?.name || "Patient"} />
-        </TabsContent>
-        <TabsContent value="vitalAlerts">
-          <VitalSignsAlerts patientId={id || ""} />
-        </TabsContent>
-        <TabsContent value="checklists">
-          <div className="space-y-6">
-            <h2 className="text-lg font-semibold mb-4">Checklists de soins</h2>
-            <CareChecklist patientId={id || ""} />
-          </div>
-        </TabsContent>
-      </Tabs>
+      {isLoading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      ) : (
+        <Tabs defaultValue="profile" className="space-y-4">
+          <TabsList className="mb-6">
+            <TabsTrigger value="profile"><User className="h-4 w-4 mr-2" /> Profil</TabsTrigger>
+            <TabsTrigger value="appointments"><Calendar className="h-4 w-4 mr-2" /> Rendez-vous</TabsTrigger>
+            <TabsTrigger value="caresheets"><ListChecks className="h-4 w-4 mr-2" /> Feuilles de soins</TabsTrigger>
+            <TabsTrigger value="vitalsigns"><HeartPulse className="h-4 w-4 mr-2" /> Signes vitaux</TabsTrigger>
+            <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-2" /> Documents</TabsTrigger>
+            <TabsTrigger value="messaging"><MessageSquare className="h-4 w-4 mr-2" /> Messages</TabsTrigger>
+            <TabsTrigger value="photos">Photos</TabsTrigger>
+            <TabsTrigger value="signatures">Signatures</TabsTrigger>
+            <TabsTrigger value="vitalAlerts">Alertes</TabsTrigger>
+            <TabsTrigger value="checklists">Checklists</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="profile" className="space-y-2">
+            <PatientProfileTab patientDetails={patientDetails} />
+          </TabsContent>
+          
+          <TabsContent value="appointments">
+            <AppointmentsTab patientId={patientId}/>
+          </TabsContent>
+          
+          <TabsContent value="caresheets">
+            <CareSheetsTab patientId={patientId}/>
+          </TabsContent>
+          
+          <TabsContent value="vitalsigns">
+            <VitalSignsTab patientId={patientId} vitalSigns={vitalSigns || []} />
+          </TabsContent>
+          
+          <TabsContent value="documents">
+            <DocumentsTab patientId={patientId}/>
+          </TabsContent>
+          
+          <TabsContent value="messaging">
+            <MessagingTab />
+          </TabsContent>
+          
+          <TabsContent value="photos">
+            <PhotosTab patientId={patientId} />
+          </TabsContent>
+          
+          <TabsContent value="signatures">
+            <SignatureTab 
+              patientId={patientId} 
+              patientName={patientDetails ? `${patientDetails.firstName} ${patientDetails.lastName}` : "Patient"} 
+            />
+          </TabsContent>
+          
+          <TabsContent value="vitalAlerts">
+            <VitalSignsAlerts patientId={patientId} />
+          </TabsContent>
+          
+          <TabsContent value="checklists">
+            <div className="space-y-6">
+              <h2 className="text-lg font-semibold mb-4">Checklists de soins</h2>
+              <CareChecklist patientId={patientId} />
+            </div>
+          </TabsContent>
+        </Tabs>
+      )}
       
       <Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Modifier les informations du patient</DialogTitle>
             <DialogDescription>
               Mettez à jour les informations personnelles du patient.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Nom
-              </Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="firstName" className="text-right">
-                Prénom
-              </Label>
-              <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="address" className="text-right">
-                Adresse
-              </Label>
-              <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phoneNumber" className="text-right">
-                Téléphone
-              </Label>
-              <Input id="phoneNumber" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="socialSecurityNumber" className="text-right">
-                Numéro de sécurité sociale
-              </Label>
-              <Input id="socialSecurityNumber" value={socialSecurityNumber} onChange={(e) => setSocialSecurityNumber(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dateOfBirth" className="text-right">
-                Date de naissance
-              </Label>
-              <Input id="dateOfBirth" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Email
-              </Label>
-              <Input id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="doctor" className="text-right">
-                Médecin traitant
-              </Label>
-              <Input id="doctor" value={doctor} onChange={(e) => setDoctor(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="medicalNotes" className="text-right">
-                Notes médicales
-              </Label>
-              <Input id="medicalNotes" value={medicalNotes} onChange={(e) => setMedicalNotes(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="insurance" className="text-right">
-                Assurance
-              </Label>
-              <Input id="insurance" value={insurance} onChange={(e) => setInsurance(e.target.value)} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">
-                Statut
-              </Label>
-              <select 
-                id="status" 
-                value={status} 
-                onChange={(e) => setStatus(e.target.value as "active" | "inactive" | "urgent")} 
-                className="col-span-3 rounded-md border-gray-200 shadow-sm focus:border-primary focus:ring-primary"
-              >
-                <option value="active">Actif</option>
-                <option value="inactive">Inactif</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </div>
-          </div>
-          <Button onClick={handleSave}>Enregistrer</Button>
+          {patientDetails && (
+            <EditPatientForm 
+              patientId={patientId}
+              initialData={patientDetails}
+              onSuccess={handleEditSuccess}
+              onUpdatePatient={updatePatient}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
+  );
+};
+
+// Separate component for patient profile tab
+const PatientProfileTab = ({ patientDetails }: { patientDetails: PatientDetails | null }) => {
+  if (!patientDetails) return null;
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Informations du patient</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-4 md:grid-cols-2">
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">Nom</p>
+          <p className="text-base">{patientDetails.lastName}</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">Prénom</p>
+          <p className="text-base">{patientDetails.firstName}</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">Adresse</p>
+          <p className="text-base">{patientDetails.address || "Non renseignée"}</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">Téléphone</p>
+          <p className="text-base">{patientDetails.phone || "Non renseigné"}</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">Numéro de sécurité sociale</p>
+          <p className="text-base">{patientDetails.socialSecurityNumber || "Non renseigné"}</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">Date de naissance</p>
+          <p className="text-base">{patientDetails.dateOfBirth || "Non renseignée"}</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">Email</p>
+          <p className="text-base">{patientDetails.email || "Non renseigné"}</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">Médecin traitant</p>
+          <p className="text-base">{patientDetails.doctor || "Non renseigné"}</p>
+        </div>
+        <div className="md:col-span-2">
+          <p className="text-sm font-medium text-muted-foreground">Notes médicales</p>
+          <p className="text-base whitespace-pre-wrap">{patientDetails.medicalNotes || "Aucune note médicale"}</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">Assurance</p>
+          <p className="text-base">{patientDetails.insurance || "Non renseignée"}</p>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">Statut</p>
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${
+              patientDetails.status === 'active' ? 'bg-green-500' :
+              patientDetails.status === 'urgent' ? 'bg-red-500' :
+              'bg-gray-500'
+            }`}></div>
+            <p className="text-base">
+              {patientDetails.status === 'active' ? 'Actif' :
+               patientDetails.status === 'urgent' ? 'Urgent' :
+               patientDetails.status === 'inactive' ? 'Inactif' : 'Non défini'}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

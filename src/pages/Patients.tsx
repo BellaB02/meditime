@@ -16,56 +16,22 @@ import { Search, UserPlus, Phone, Clock, Calendar, FileText, MapPin } from "luci
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import AddPatientForm from "@/components/patients/AddPatientForm";
 import { toast } from "sonner";
-import { PatientInfo, PatientService } from "@/services/PatientService";
+import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Type for the patient data structure
 interface Patient {
   id: string;
   name: string;
   firstName: string;
   phone: string;
   address: string;
-  lastVisit: string;
-  nextVisit: string;
-  status: "regular" | "urgent" | "inactive";
+  lastVisit?: string;
+  nextVisit?: string;
+  status: "active" | "urgent" | "inactive";
 }
-
-// Données de patients de test au cas où la base de données ne renvoie rien
-const FALLBACK_PATIENTS: Patient[] = [
-  {
-    id: "test-1",
-    name: "Dubois",
-    firstName: "Marie",
-    phone: "06 12 34 56 78",
-    address: "15 Rue du Commerce, Paris",
-    lastVisit: "Aujourd'hui",
-    nextVisit: "Demain, 10:15",
-    status: "regular"
-  },
-  {
-    id: "test-2",
-    name: "Martin",
-    firstName: "Jean",
-    phone: "07 23 45 67 89",
-    address: "8 Avenue des Fleurs, Lyon",
-    lastVisit: "Hier",
-    nextVisit: "Dans 2 jours",
-    status: "urgent"
-  },
-  {
-    id: "test-3",
-    name: "Petit",
-    firstName: "Sophie",
-    phone: "06 34 56 78 90",
-    address: "22 Boulevard Central, Marseille",
-    lastVisit: "Il y a 3 jours",
-    nextVisit: "Aujourd'hui, 14:00",
-    status: "inactive"
-  }
-];
 
 const Patients = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,113 +40,137 @@ const Patients = () => {
   const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
   const { user } = useAuth();
-
+  
   // Charger les patients au démarrage
   useEffect(() => {
     loadPatients();
   }, []);
   
-  // Charger les données des patients
+  // Charger les données des patients depuis Supabase
   const loadPatients = async () => {
     setIsLoading(true);
     
     try {
       console.log("Chargement des patients...");
       
-      // Commencer avec les données de secours
-      setPatients(FALLBACK_PATIENTS);
-      
-      // Tenter de récupérer depuis PatientService (synchrone)
-      try {
-        const patientsSync = PatientService.getAllPatientsSync();
-        console.log("Patients synchrones chargés:", patientsSync.length);
+      // Vérifier si l'utilisateur est connecté pour les requêtes Supabase
+      if (user) {
+        console.log("Tentative de chargement depuis Supabase...");
         
-        if (patientsSync && patientsSync.length > 0) {
-          const convertedPatients = patientsSync.map(patientInfo => ({
-            id: patientInfo.id,
-            name: patientInfo.name,
-            firstName: patientInfo.firstName || "",
-            phone: patientInfo.phoneNumber || "",
-            address: patientInfo.address || "",
-            lastVisit: ["Aujourd'hui", "Hier", "Il y a 3 jours"][Math.floor(Math.random() * 3)],
-            nextVisit: ["Demain, 10:15", "Dans 2 jours", "Aujourd'hui, 14:00"][Math.floor(Math.random() * 3)],
-            status: (patientInfo.status as "regular" | "urgent" | "inactive") || "regular"
-          }));
-          
-          setPatients(convertedPatients);
+        // Interroger directement Supabase pour les patients
+        const { data: supabasePatients, error } = await supabase
+          .from('patients')
+          .select('id, first_name, last_name, phone, address, status, created_at')
+          .order('last_name', { ascending: true });
+        
+        if (error) {
+          console.error("Erreur Supabase:", error);
+          throw error;
         }
-      } catch (error) {
-        console.error("Erreur lors du chargement des patients synchrones:", error);
-      }
-      
-      // Puis tenter de charger depuis Supabase
-      try {
-        // Vérifier si l'utilisateur est connecté pour les requêtes Supabase
-        if (user) {
-          console.log("Tentative de chargement depuis Supabase...");
+        
+        if (supabasePatients && supabasePatients.length > 0) {
+          console.log("Patients Supabase chargés:", supabasePatients.length);
           
-          // Interroger directement Supabase pour les patients
-          const { data: supabasePatients, error } = await supabase
-            .from('patients')
-            .select('*')
-            .order('last_name', { ascending: true });
+          // Récupérer les rendez-vous récents pour chaque patient
+          const today = new Date().toISOString().split('T')[0];
           
-          if (error) {
-            console.error("Erreur Supabase:", error);
-            throw error;
+          // Préparer les données d'appointments pour tous les patients
+          const { data: appointments, error: appointmentsError } = await supabase
+            .from('appointments')
+            .select('patient_id, date, time')
+            .order('date', { ascending: true });
+            
+          if (appointmentsError) {
+            console.error("Erreur lors du chargement des rendez-vous:", appointmentsError);
           }
           
-          if (supabasePatients && supabasePatients.length > 0) {
-            console.log("Patients Supabase chargés:", supabasePatients.length);
+          // Map des rendez-vous par patient
+          const appointmentsByPatient = appointments ? appointments.reduce((acc, appt) => {
+            if (!acc[appt.patient_id]) {
+              acc[appt.patient_id] = [];
+            }
+            acc[appt.patient_id].push(appt);
+            return acc;
+          }, {} as Record<string, any[]>) : {};
+          
+          // Transformer les données pour l'affichage
+          const convertedPatients: Patient[] = supabasePatients.map(patient => {
+            const patientAppointments = appointmentsByPatient[patient.id] || [];
             
-            const convertedPatients = supabasePatients.map(patient => ({
+            // Trouver le dernier et le prochain rendez-vous
+            const pastAppointments = patientAppointments.filter(
+              a => new Date(`${a.date}T${a.time}`).getTime() < Date.now()
+            ).sort((a, b) => new Date(`${b.date}T${b.time}`).getTime() - new Date(`${a.date}T${a.time}`).getTime());
+            
+            const futureAppointments = patientAppointments.filter(
+              a => new Date(`${a.date}T${a.time}`).getTime() >= Date.now()
+            ).sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
+            
+            const lastVisit = pastAppointments.length > 0 ? 
+              formatAppointmentDate(new Date(`${pastAppointments[0].date}T${pastAppointments[0].time}`)) : 
+              undefined;
+              
+            const nextVisit = futureAppointments.length > 0 ? 
+              `${formatAppointmentDate(new Date(`${futureAppointments[0].date}T${futureAppointments[0].time}`))}, ${futureAppointments[0].time.substring(0, 5)}` : 
+              undefined;
+            
+            return {
               id: patient.id,
               name: patient.last_name || "",
               firstName: patient.first_name || "",
               phone: patient.phone || "",
               address: patient.address || "",
-              lastVisit: ["Aujourd'hui", "Hier", "Il y a 3 jours"][Math.floor(Math.random() * 3)],
-              nextVisit: ["Demain, 10:15", "Dans 2 jours", "Aujourd'hui, 14:00"][Math.floor(Math.random() * 3)],
-              status: (patient.status as "regular" | "urgent" | "inactive") || "regular"
-            }));
-            
-            setPatients(convertedPatients);
-          } else {
-            console.log("Aucun patient trouvé dans Supabase");
-            
-            // Tenter également via PatientService
-            const patientInfos = await PatientService.getAllPatients();
-            
-            if (patientInfos && patientInfos.length > 0) {
-              console.log("Patients via service asynchrone:", patientInfos.length);
-              
-              setPatients(patientInfos.map(patientInfo => ({
-                id: patientInfo.id,
-                name: patientInfo.name,
-                firstName: patientInfo.firstName || "",
-                phone: patientInfo.phoneNumber || "",
-                address: patientInfo.address || "",
-                lastVisit: ["Aujourd'hui", "Hier", "Il y a 3 jours"][Math.floor(Math.random() * 3)],
-                nextVisit: ["Demain, 10:15", "Dans 2 jours", "Aujourd'hui, 14:00"][Math.floor(Math.random() * 3)],
-                status: ["regular", "urgent", "inactive"][Math.floor(Math.random() * 3)] as "regular" | "urgent" | "inactive"
-              })));
-            } else {
-              console.log("PatientService.getAllPatients() n'a retourné aucun patient");
-              // Garder les patients de secours si rien n'est trouvé
-            }
-          }
+              lastVisit,
+              nextVisit,
+              status: (patient.status as "active" | "urgent" | "inactive") || "active"
+            };
+          });
+          
+          setPatients(convertedPatients);
         } else {
-          console.log("Utilisateur non connecté, utilisation des données de secours");
+          console.log("Aucun patient trouvé dans Supabase");
+          setPatients([]);
         }
-      } catch (error) {
-        console.error("Erreur lors du chargement des patients depuis Supabase:", error);
-        toast.error("Impossible de charger les patients depuis la base de données");
+      } else {
+        console.log("Utilisateur non connecté");
+        setPatients([]);
       }
     } catch (error) {
       console.error("Erreur globale du chargement des patients:", error);
+      toast.error("Une erreur est survenue lors du chargement des patients");
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  // Formater une date pour l'affichage
+  const formatAppointmentDate = (date: Date) => {
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Comparer les dates sans prendre en compte les heures
+    if (date.getDate() === today.getDate() && 
+        date.getMonth() === today.getMonth() && 
+        date.getFullYear() === today.getFullYear()) {
+      return "Aujourd'hui";
+    }
+    
+    if (date.getDate() === tomorrow.getDate() && 
+        date.getMonth() === tomorrow.getMonth() && 
+        date.getFullYear() === tomorrow.getFullYear()) {
+      return "Demain";
+    }
+    
+    // Si c'est dans le passé
+    if (date < today) {
+      const diffDays = Math.floor((today.getTime() - date.getTime()) / (1000 * 3600 * 24));
+      if (diffDays === 1) return "Hier";
+      if (diffDays < 7) return `Il y a ${diffDays} jours`;
+    }
+    
+    // Format standard
+    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
   };
   
   // Filtrer les patients en fonction de la recherche
@@ -188,17 +178,25 @@ const Patients = () => {
     (patient) => 
       patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       patient.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.address.toLowerCase().includes(searchTerm.toLowerCase())
+      (patient.address && patient.address.toLowerCase().includes(searchTerm.toLowerCase()))
   );
   
   // Fonction pour appeler un patient
   const handleCallPatient = (phone: string) => {
+    if (!phone) {
+      toast.warning("Aucun numéro de téléphone disponible");
+      return;
+    }
     window.location.href = `tel:${phone.replace(/\s/g, '')}`;
     toast.info(`Appel vers ${phone}`);
   };
   
   // Fonction pour naviguer vers l'adresse d'un patient
   const handleNavigateToAddress = (address: string) => {
+    if (!address) {
+      toast.warning("Aucune adresse disponible");
+      return;
+    }
     const encodedAddress = encodeURIComponent(address);
     window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`, '_blank');
     toast.info(`Navigation vers : ${address}`);
@@ -236,7 +234,7 @@ const Patients = () => {
       case 'inactive':
         return 'Inactif';
       default:
-        return 'Régulier';
+        return 'Actif';
     }
   };
 
@@ -302,31 +300,45 @@ const Patients = () => {
                     <TableRow key={patient.id}>
                       <TableCell className="font-medium">{patient.firstName} {patient.name}</TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <button 
-                          className="flex items-center gap-2 hover:text-primary hover:underline"
-                          onClick={() => handleCallPatient(patient.phone)}
-                          title="Appeler ce patient"
-                        >
-                          <Phone size={14} />
-                          {patient.phone}
-                        </button>
+                        {patient.phone ? (
+                          <button 
+                            className="flex items-center gap-2 hover:text-primary hover:underline"
+                            onClick={() => handleCallPatient(patient.phone)}
+                            title="Appeler ce patient"
+                          >
+                            <Phone size={14} />
+                            {patient.phone}
+                          </button>
+                        ) : (
+                          <span className="text-muted-foreground">Non renseigné</span>
+                        )}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
-                        <button 
-                          className="flex items-center gap-2 hover:text-primary hover:underline"
-                          onClick={() => handleNavigateToAddress(patient.address)}
-                          title="Naviguer vers cette adresse"
-                        >
-                          <MapPin size={14} />
-                          {patient.address}
-                        </button>
+                        {patient.address ? (
+                          <button 
+                            className="flex items-center gap-2 hover:text-primary hover:underline"
+                            onClick={() => handleNavigateToAddress(patient.address)}
+                            title="Naviguer vers cette adresse"
+                          >
+                            <MapPin size={14} />
+                            {patient.address}
+                          </button>
+                        ) : (
+                          <span className="text-muted-foreground">Non renseignée</span>
+                        )}
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">{patient.lastVisit}</TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {patient.lastVisit || <span className="text-muted-foreground">Aucune</span>}
+                      </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Clock size={14} className="text-primary" />
-                          {patient.nextVisit}
-                        </div>
+                        {patient.nextVisit ? (
+                          <div className="flex items-center gap-2">
+                            <Clock size={14} className="text-primary" />
+                            {patient.nextVisit}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Non planifié</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant={getStatusBadgeVariant(patient.status)}>
@@ -339,7 +351,7 @@ const Patients = () => {
                             <FileText className="mr-2 h-4 w-4" />
                             Voir
                           </Button>
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/calendar?patient=${patient.id}`)}>
                             <Calendar className="mr-2 h-4 w-4" />
                             RDV
                           </Button>
@@ -350,7 +362,7 @@ const Patients = () => {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                      Aucun patient trouvé. Ajoutez votre premier patient avec le bouton "Nouveau patient".
+                      {user ? "Aucun patient trouvé. Ajoutez votre premier patient avec le bouton \"Nouveau patient\"." : "Veuillez vous connecter pour voir vos patients."}
                     </TableCell>
                   </TableRow>
                 )}
@@ -376,4 +388,3 @@ const Patients = () => {
 };
 
 export default Patients;
-
