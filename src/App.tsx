@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -125,11 +126,7 @@ const App = () => {
                       <Route path="/practice" element={<Practice />} />
                       <Route path="/care-protocols" element={<CareProtocols />} />
                       <Route path="/care-protocols/:protocolId" element={<CareProtocolEditor />} />
-                      <Route path="/inventory" element={
-                        <Layout>
-                          <Inventory />
-                        </Layout>
-                      } />
+                      <Route path="/inventory" element={<Inventory />} />
                       <Route path="*" element={<NotFound />} />
                     </Route>
                   </Routes>

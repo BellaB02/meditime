@@ -27,7 +27,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
   // Utiliser le hook pour les documents du patient
   const { usePatientDocuments, useUploadPatientDocument } = usePatientsService();
   const { data: patientDocuments, isLoading: isLoadingDocuments } = usePatientDocuments(patientId);
-  const { mutateAsync: uploadDocument, isLoading: isUploading } = useUploadPatientDocument();
+  const { mutateAsync: uploadDocument, isPending } = useUploadPatientDocument();
   
   // Types de documents disponibles
   const documentTypes = [
@@ -245,11 +245,11 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isLoading}>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isLoading || isPending}>
               Annuler
             </Button>
-            <Button onClick={handleUpload} disabled={isLoading}>
-              {isLoading ? "Téléversement..." : "Téléverser"}
+            <Button onClick={handleUpload} disabled={isLoading || isPending}>
+              {isLoading || isPending ? "Téléversement..." : "Téléverser"}
             </Button>
           </DialogFooter>
         </DialogContent>

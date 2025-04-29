@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -215,18 +216,18 @@ const PatientFile = () => {
           <MessagingTab />
         </TabsContent>
         <TabsContent value="photos">
-          <PhotosTab patientId={patientId} />
+          <PhotosTab patientId={id || ""} />
         </TabsContent>
         <TabsContent value="signatures">
-          <SignatureTab patientId={patientId} patientName={patientInfo?.firstName ? `${patientInfo.firstName} ${patientInfo.name}` : patientInfo?.name || "Patient"} />
+          <SignatureTab patientId={id || ""} patientName={patientInfo?.firstName ? `${patientInfo.firstName} ${patientInfo.name}` : patientInfo?.name || "Patient"} />
         </TabsContent>
         <TabsContent value="vitalAlerts">
-          <VitalSignsAlerts patientId={patientId} />
+          <VitalSignsAlerts patientId={id || ""} />
         </TabsContent>
         <TabsContent value="checklists">
           <div className="space-y-6">
             <h2 className="text-lg font-semibold mb-4">Checklists de soins</h2>
-            <CareChecklist patientId={patientId} />
+            <CareChecklist patientId={id || ""} />
           </div>
         </TabsContent>
       </Tabs>
