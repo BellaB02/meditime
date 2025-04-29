@@ -1,4 +1,3 @@
-
 import { supabase } from '../client';
 import { Patient, VitalSign, CareDocument } from './types';
 
