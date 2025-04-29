@@ -3,6 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AppointmentDateHeader } from "./AppointmentDateHeader";
 import { AppointmentCard, Appointment } from "./AppointmentCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AppointmentEmptyState } from "./AppointmentEmptyState";
+import { AppointmentLoadingState } from "./AppointmentLoadingState";
 
 interface AppointmentListProps {
   date: Date | undefined;
@@ -14,21 +16,11 @@ interface AppointmentListProps {
 export const AppointmentList = ({ date, appointments, onMarkAsCompleted, isLoading = false }: AppointmentListProps) => {
   const renderContent = () => {
     if (isLoading) {
-      return (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="w-full h-32" />
-          ))}
-        </div>
-      );
+      return <AppointmentLoadingState />;
     }
 
     if (appointments.length === 0) {
-      return (
-        <div className="text-center py-8 text-muted-foreground">
-          Aucun rendez-vous prévu pour cette date
-        </div>
-      );
+      return <AppointmentEmptyState />;
     }
 
     return (
@@ -45,7 +37,7 @@ export const AppointmentList = ({ date, appointments, onMarkAsCompleted, isLoadi
   };
 
   return (
-    <Card>
+    <Card className="transition-all duration-300 ease-in-out">
       <CardContent className="p-4">
         <AppointmentDateHeader 
           date={date} 

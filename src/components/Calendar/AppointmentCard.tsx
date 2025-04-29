@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Clock, MapPin, User, CheckCircle, Download } from "lucide-react";
 import { toast } from "sonner";
 import { DocumentService } from "@/services/DocumentService";
+import { motion } from "framer-motion";
 
 interface AppointmentPatient {
   id: string;
@@ -26,25 +27,32 @@ interface AppointmentCardProps {
 
 export const AppointmentCard = ({ appointment, onMarkAsCompleted }: AppointmentCardProps) => {
   const handleDownloadCareSheet = () => {
-    DocumentService.downloadDocument(
-      "feuille_de_soins", 
-      appointment.patient.id,
-      {
-        type: appointment.patient.care,
-        date: appointment.date.toLocaleDateString("fr-FR"),
-        time: appointment.time,
-        patientName: appointment.patient.name,
-        patientAddress: appointment.patient.address
-      },
-      true
-    );
-    
-    toast.success(`Feuille de soins pré-remplie téléchargée pour ${appointment.patient.name}`);
+    try {
+      DocumentService.downloadDocument(
+        "feuille_de_soins", 
+        appointment.patient.id,
+        {
+          type: appointment.patient.care,
+          date: appointment.date.toLocaleDateString("fr-FR"),
+          time: appointment.time,
+          patientName: appointment.patient.name,
+          patientAddress: appointment.patient.address
+        },
+        true
+      );
+      
+      toast.success(`Feuille de soins pré-remplie téléchargée pour ${appointment.patient.name}`);
+    } catch (error) {
+      toast.error("Erreur lors du téléchargement de la feuille de soins");
+    }
   };
 
   return (
-    <div 
-      className={`border rounded-md p-4 ${appointment.completed ? "bg-green-50 border-green-200" : "card-hover"}`}
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className={`border rounded-md p-4 ${appointment.completed ? "bg-green-50 border-green-200" : "card-hover hover:shadow-md transition-all duration-200"}`}
     >
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-2">
@@ -90,12 +98,13 @@ export const AppointmentCard = ({ appointment, onMarkAsCompleted }: AppointmentC
           <Button 
             size="sm" 
             onClick={() => onMarkAsCompleted(appointment.id)}
+            className="hover:bg-green-600 transition-colors duration-200"
           >
             <CheckCircle size={14} className="mr-1" />
             Marquer comme terminé
           </Button>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
