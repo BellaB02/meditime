@@ -51,6 +51,13 @@ export function Header() {
       description: "Vous avez été déconnecté avec succès",
     });
   };
+  
+  const handleProfileClick = () => {
+    navigate('/settings');
+    if (isMobile) {
+      toggleSidebar();
+    }
+  };
 
   // Obtenir les initiales du nom de l'utilisateur
   const getUserInitials = () => {
@@ -64,14 +71,19 @@ export function Header() {
   };
   
   return (
-    <header className="h-16 px-4 border-b flex items-center justify-between bg-background">
+    <header className="h-16 px-4 border-b flex items-center justify-between bg-background shadow-sm">
       <div className="flex items-center gap-2 lg:gap-4 w-full">
         <Button variant="ghost" size="icon" onClick={toggleSidebar} className="lg:hidden">
           <Menu className="h-6 w-6" />
           <span className="sr-only">Menu</span>
         </Button>
-        <div className="hidden lg:flex">
-          <h1 className="text-xl font-semibold">Meditime</h1>
+        <div className="hidden md:flex items-center">
+          <img 
+            src="/lovable-uploads/f32c5bf3-0b98-449e-8874-7a5665e67228.png" 
+            alt="Meditime Logo" 
+            className="h-8 w-8 mr-2" 
+          />
+          <h1 className="text-xl font-semibold text-primary">Meditime Pro</h1>
         </div>
       </div>
       
@@ -99,7 +111,7 @@ export function Header() {
           <span className="sr-only">Se déconnecter</span>
         </Button>
         
-        <Avatar>
+        <Avatar className="cursor-pointer" onClick={handleProfileClick}>
           <AvatarImage src={currentMember?.avatar || ""} />
           <AvatarFallback>{getUserInitials()}</AvatarFallback>
         </Avatar>

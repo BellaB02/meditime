@@ -2,11 +2,14 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PricingTab } from "@/components/Settings/PricingTab";
 import { CareTypesTab } from "@/components/Settings/CareTypesTab";
+import { GeneralTab } from "@/components/Settings/GeneralTab";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState("pricing");
+  const [activeTab, setActiveTab] = useState("general");
+  const isMobile = useIsMobile();
   
   return (
     <div className="animate-fade-in space-y-6">
@@ -17,25 +20,23 @@ export default function Settings() {
         </p>
       </div>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className={`${isMobile ? "w-full grid grid-cols-3" : ""}`}>
+          <TabsTrigger value="general">Général</TabsTrigger>
           <TabsTrigger value="pricing">Tarifs</TabsTrigger>
           <TabsTrigger value="care-types">Types de soins</TabsTrigger>
-          <TabsTrigger value="general">Général</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="pricing" className="space-y-4">
+        <TabsContent value="general" className="space-y-4 mt-4">
+          <GeneralTab />
+        </TabsContent>
+        
+        <TabsContent value="pricing" className="space-y-4 mt-4">
           <PricingTab />
         </TabsContent>
         
-        <TabsContent value="care-types" className="space-y-4">
+        <TabsContent value="care-types" className="space-y-4 mt-4">
           <CareTypesTab />
-        </TabsContent>
-        
-        <TabsContent value="general" className="space-y-4">
-          <div className="text-center py-20 text-muted-foreground">
-            Paramètres généraux à venir...
-          </div>
         </TabsContent>
       </Tabs>
     </div>

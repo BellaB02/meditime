@@ -6,22 +6,25 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSidebar } from './SidebarProvider';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Sidebar = () => {
   const { isOpen } = useSidebar();
+  const isMobile = useIsMobile();
   
   return (
     <aside 
       className={cn(
         'fixed left-0 top-0 z-20 h-full bg-sidebar transition-all duration-300 border-r border-sidebar-border',
-        isOpen ? 'w-64' : 'w-[70px]'
+        isOpen ? 'w-64' : 'w-[70px]',
+        isMobile && !isOpen ? 'w-0' : ''
       )}
     >
       <div className="flex items-center h-16 px-4 border-b border-sidebar-border">
         <div className={cn('flex items-center overflow-hidden', isOpen ? 'justify-start' : 'justify-center')}>
-          <Stethoscope className="h-6 w-6 text-primary" />
+          <img src="/lovable-uploads/f32c5bf3-0b98-449e-8874-7a5665e67228.png" alt="Meditime Logo" className="h-8 w-8" />
           {isOpen && (
-            <h1 className="ml-2 text-lg font-semibold text-primary">Infirmier Facile</h1>
+            <h1 className="ml-2 text-lg font-semibold text-primary">Meditime Pro</h1>
           )}
         </div>
       </div>
