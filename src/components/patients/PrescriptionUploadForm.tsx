@@ -37,9 +37,7 @@ const prescriptionFormSchema = z.object({
   }),
 });
 
-type PrescriptionFormValues = z.infer<typeof prescriptionFormSchema> & {
-  file: File;
-};
+type PrescriptionFormValues = z.infer<typeof prescriptionFormSchema>;
 
 interface PrescriptionUploadFormProps {
   patientId: string;
@@ -168,7 +166,7 @@ const PrescriptionUploadForm = ({ patientId, onSuccess }: PrescriptionUploadForm
         <FormField
           control={form.control}
           name="file"
-          render={({ field: { onChange, ...field } }) => (
+          render={({ field: { value, onChange, ...fieldProps } }) => (
             <FormItem>
               <FormLabel>Fichier PDF</FormLabel>
               <FormControl>
@@ -193,9 +191,8 @@ const PrescriptionUploadForm = ({ patientId, onSuccess }: PrescriptionUploadForm
                     className="hidden"
                     onChange={(e) => {
                       handleFileChange(e);
-                      onChange(e.target.files?.[0]);
                     }}
-                    {...field}
+                    {...fieldProps}
                   />
                   <Button
                     type="button"
