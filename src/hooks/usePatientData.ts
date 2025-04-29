@@ -7,6 +7,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { patientFormSchema, PatientFormValues } from "@/components/patient/PatientInfo";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePatientsService } from "@/hooks/usePatientsService";
 
 export const usePatientData = (patientId?: string) => {
   const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
@@ -15,6 +17,12 @@ export const usePatientData = (patientId?: string) => {
   const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [medicalNotes, setMedicalNotes] = useState("");
+  const { user } = useAuth();
+  const { usePatient, usePatientVitalSigns, useUpdatePatient } = usePatientsService();
+  
+  const { data: supabasePatient, isLoading: isLoadingPatient } = usePatient(patientId || "");
+  const { data: supabaseVitalSigns, isLoading: isLoadingVitalSigns } = usePatientVitalSigns(patientId || "");
+  const updatePatientMutation = useUpdatePatient();
   
   // Sample data for visits
   const [visits, setVisits] = useState<Visit[]>([
@@ -50,9 +58,10 @@ export const usePatientData = (patientId?: string) => {
     },
   });
   
-  // Fetch patient data
+  // Fetch patient data - using both Supabase and legacy data for compatibility
   useEffect(() => {
     if (patientId) {
+      // Fetch from legacy service for backward compatibility
       const patient = PatientService.getPatientInfo(patientId);
       if (patient) {
         setPatientInfo(patient);
@@ -62,6 +71,46 @@ export const usePatientData = (patientId?: string) => {
       }
     }
   }, [patientId]);
+  
+  // Update with Supabase data when available
+  useEffect(() => {
+    if (supabasePatient) {
+      // Convert Supabase patient format to legacy format
+      const patientData: PatientInfo = {
+        id: supabasePatient.id,
+        name: supabasePatient.last_name,
+        firstName: supabasePatient.first_name,
+        address: supabasePatient.address,
+        phoneNumber: supabasePatient.phone,
+        email: supabasePatient.email,
+        dateOfBirth: supabasePatient.date_of_birth,
+        doctor: supabasePatient.doctor,
+        insurance: supabasePatient.insurance,
+        medicalNotes: supabasePatient.medical_notes,
+        status: supabasePatient.status as "active" | "inactive" | "urgent",
+        socialSecurityNumber: supabasePatient.social_security_number
+      };
+      
+      setPatientInfo(patientData);
+      setMedicalNotes(patientData.medicalNotes || "");
+    }
+  }, [supabasePatient]);
+  
+  // Update vital signs from Supabase
+  useEffect(() => {
+    if (supabaseVitalSigns && supabaseVitalSigns.length > 0) {
+      // Convert Supabase vital signs to legacy format
+      const convertedVitalSigns: VitalSign[] = supabaseVitalSigns.map(sign => ({
+        date: new Date(sign.recorded_at).toLocaleDateString('fr-FR'),
+        temperature: `${sign.temperature}°C`,
+        heartRate: `${sign.heart_rate} bpm`,
+        bloodPressure: sign.blood_pressure,
+        notes: sign.notes || ""
+      }));
+      
+      setVitalSigns(convertedVitalSigns);
+    }
+  }, [supabaseVitalSigns]);
   
   // Update form values when patient info changes
   useEffect(() => {
@@ -95,26 +144,46 @@ export const usePatientData = (patientId?: string) => {
     }
   };
   
-  const handleSavePatientInfo = (data: PatientFormValues) => {
+  const handleSavePatientInfo = async (data: PatientFormValues) => {
     if (patientId && patientInfo) {
-      // Mise à jour des informations patient (simulation)
-      const updatedPatient: PatientInfo = {
-        ...patientInfo,
-        name: data.name,
-        firstName: data.firstName,
-        phoneNumber: data.phone,
-        email: data.email,
-        address: data.address,
-        dateOfBirth: data.birthdate,
-        insurance: data.insurance,
-        doctor: data.doctor,
-        medicalNotes: data.notes
-      };
-      
-      setPatientInfo(updatedPatient);
-      setMedicalNotes(data.notes || "");
-      setIsEditingPatient(false);
-      toast.success("Informations patient mises à jour avec succès");
+      // Mise à jour des informations patient dans Supabase
+      try {
+        await updatePatientMutation.mutateAsync({
+          patientId,
+          data: {
+            last_name: data.name,
+            first_name: data.firstName,
+            phone: data.phone,
+            email: data.email,
+            address: data.address,
+            date_of_birth: data.birthdate,
+            insurance: data.insurance,
+            doctor: data.doctor,
+            medical_notes: data.notes
+          }
+        });
+        
+        // Mise à jour du state local
+        const updatedPatient: PatientInfo = {
+          ...patientInfo,
+          name: data.name,
+          firstName: data.firstName,
+          phoneNumber: data.phone,
+          email: data.email,
+          address: data.address,
+          dateOfBirth: data.birthdate,
+          insurance: data.insurance,
+          doctor: data.doctor,
+          medicalNotes: data.notes
+        };
+        
+        setPatientInfo(updatedPatient);
+        setMedicalNotes(data.notes || "");
+        setIsEditingPatient(false);
+      } catch (error) {
+        console.error("Error updating patient:", error);
+        toast.error("Erreur lors de la mise à jour des informations patient");
+      }
     }
   };
   
@@ -129,7 +198,8 @@ export const usePatientData = (patientId?: string) => {
         address: patientInfo.address || "",
         birthdate: patientInfo.dateOfBirth || "",
         insurance: patientInfo.insurance || "",
-        doctor: patientInfo.doctor || ""
+        doctor: patientInfo.doctor || "",
+        notes: patientInfo.medicalNotes || ""
       });
     }
   };
@@ -145,6 +215,7 @@ export const usePatientData = (patientId?: string) => {
     medicalNotes,
     visits,
     patientForm,
+    isLoading: isLoadingPatient || isLoadingVitalSigns,
     handleCallPatient,
     handleNavigateToAddress,
     handleSavePatientInfo,
