@@ -14,14 +14,6 @@ export const UserWelcome = ({ firstName, role }: UserWelcomeProps = {}) => {
   // Get the current user (for now, we'll just use the first admin in the members list or the provided props)
   const currentUser = firstName ? { name: firstName, role } : members.find(member => member.role === "admin");
   
-  // Get greeting based on time of day
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Bonjour";
-    if (hour < 18) return "Bon après-midi";
-    return "Bonsoir";
-  };
-  
   // Get the current date in French format
   const getCurrentDate = () => {
     return new Date().toLocaleDateString('fr-FR', { 
@@ -44,7 +36,7 @@ export const UserWelcome = ({ firstName, role }: UserWelcomeProps = {}) => {
   return (
     <div className="mb-8">
       <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold`}>
-        {getGreeting()}, {firstName || currentUser.name}
+        Ravi de vous revoir, {firstName || currentUser.name}
       </h1>
       <p className="text-muted-foreground">{getCurrentDate()}</p>
     </div>
