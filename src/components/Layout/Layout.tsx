@@ -6,6 +6,7 @@ import { Header } from './Header';
 import { useSidebar } from './SidebarProvider';
 import { MobileNav } from './MobileNav';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useEffect, useState } from 'react';
 
 const getTitleFromPath = (pathname: string): string => {
   switch (pathname) {
@@ -43,9 +44,23 @@ const Layout = () => {
   const location = useLocation();
   const title = getTitleFromPath(location.pathname);
   const isMobile = useIsMobile();
+  const [isIOS, setIsIOS] = useState(false);
+  
+  useEffect(() => {
+    // Detect iOS devices
+    const checkIOS = () => {
+      const isAppleDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      setIsIOS(isAppleDevice);
+    };
+    
+    checkIOS();
+  }, []);
 
   return (
-    <div className="min-h-screen flex w-full">
+    <div className={cn(
+      "min-h-screen flex w-full",
+      isIOS && "pb-safe"
+    )}>
       {/* Sidebar pour desktop */}
       <Sidebar />
       
@@ -55,7 +70,10 @@ const Layout = () => {
         isMobile && 'ml-0'
       )}>
         <Header />
-        <div className="p-4 sm:p-6 pb-20 md:pb-6">
+        <div className={cn(
+          "p-4 sm:p-6 pb-20 md:pb-6",
+          isIOS && "pb-24 md:pb-6" // Add extra padding at the bottom for iOS
+        )}>
           <Outlet />
         </div>
         

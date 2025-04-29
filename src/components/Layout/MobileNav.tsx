@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { useSidebar } from './SidebarProvider';
+import { supabase } from "@/integrations/supabase/client";
 
 export function MobileNav() {
   const location = useLocation();
@@ -66,9 +67,11 @@ export function MobileNav() {
     }
   ];
   
-  // On grand écran, on utilise un Drawer (menu du bas)
-  // Sur petit écran, on utilise un Sheet (menu latéral)
-  const isWideScreen = window.innerWidth > 640;
+  // Detect if we're on iOS
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  
+  // On iOS, use Sheet (side panel). On other platforms, decide based on screen width
+  const useSheet = isIOS || window.innerWidth <= 640;
   
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -102,12 +105,30 @@ export function MobileNav() {
   return (
     <>
       {/* Navigation fixe pour les 5 routes principales */}
-      <div className="fixed bottom-0 left-0 right-0 h-16 bg-background border-t flex justify-between items-center px-1 md:hidden z-50">
+      <div className={cn(
+        "fixed bottom-0 left-0 right-0 h-16 bg-background border-t flex justify-between items-center px-1 md:hidden z-50",
+        isIOS && "pb-6" // Add extra padding at the bottom for iOS safe area
+      )}>
         {routes.map((route) => (
           <NavLink key={route.path} route={route} />
         ))}
         
-        {isWideScreen ? (
+        {useSheet ? (
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" className="flex flex-col items-center justify-center h-full p-2">
+                <Menu className="h-5 w-5" />
+                <span className="text-xs mt-1">Plus</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="h-[70vh]">
+              <h3 className="text-lg font-medium mb-4 text-center">
+                Menu Meditime Pro
+              </h3>
+              <AllRoutes />
+            </SheetContent>
+          </Sheet>
+        ) : (
           <Drawer>
             <DrawerTrigger asChild>
               <Button variant="ghost" className="flex flex-col items-center justify-center h-full p-2">
@@ -124,26 +145,11 @@ export function MobileNav() {
               </div>
             </DrawerContent>
           </Drawer>
-        ) : (
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" className="flex flex-col items-center justify-center h-full p-2">
-                <Menu className="h-5 w-5" />
-                <span className="text-xs mt-1">Plus</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="h-[70vh]">
-              <h3 className="text-lg font-medium mb-4 text-center">
-                Menu Meditime Pro
-              </h3>
-              <AllRoutes />
-            </SheetContent>
-          </Sheet>
         )}
       </div>
       
       {/* Espace réservé pour éviter que le contenu ne soit caché derrière la navigation */}
-      <div className="h-16 md:hidden" />
+      <div className={cn("h-16 md:hidden", isIOS && "h-24")} />
     </>
   );
 }

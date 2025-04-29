@@ -21,3 +21,18 @@ export function useIsMobile(): boolean {
 
   return isMobile;
 }
+
+export function useIsIOS(): boolean {
+  const [isIOS, setIsIOS] = useState(false);
+  
+  useEffect(() => {
+    const checkIOS = () => {
+      const isAppleDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      setIsIOS(isAppleDevice);
+    };
+    
+    checkIOS();
+  }, []);
+  
+  return isIOS;
+}
