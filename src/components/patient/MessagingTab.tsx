@@ -1,246 +1,306 @@
 
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
+import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { useSupabaseServices } from '@/hooks/useSupabaseServices';
-import { supabase } from '@/integrations/supabase/client';
-import { PatientMessage } from '@/integrations/supabase/services/types';
-import { useProfile } from '@/hooks/useProfile';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { Send, Clock, CheckCheck, FileSearch, Bell } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { MessagingService, useMessaging } from '@/services/MessagingService';
-import { NotificationService } from '@/services/NotificationService';
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Send, Clock, CheckCircle, User, ChevronDown, Plus, Paperclip } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "sonner";
 
-const MessagingTab = () => {
-  const { id: patientId } = useParams<{ id: string }>();
-  const [newMessage, setNewMessage] = useState('');
-  const [messages, setMessages] = useState<PatientMessage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const queryClient = useQueryClient();
-  const { profile } = useProfile();
-  const { sendMessage, markAsRead } = useMessaging();
+interface Message {
+  id: string;
+  content: string;
+  timestamp: Date;
+  sender: "patient" | "caregiver";
+  read: boolean;
+}
 
-  // Récupération des messages
-  useEffect(() => {
-    if (!patientId) return;
-    
-    const fetchMessages = async () => {
-      setLoading(true);
-      try {
-        const data = await MessagingService.getPatientMessages(patientId);
-        setMessages(data);
-      } catch (err) {
-        console.error('Erreur lors de la récupération des messages:', err);
-        toast.error("Impossible de charger les messages");
-      } finally {
-        setLoading(false);
-      }
-    };
+interface Conversation {
+  id: string;
+  patientName: string;
+  avatar?: string;
+  unreadCount: number;
+  lastMessage: string;
+  lastMessageTime: Date;
+  messages: Message[];
+}
 
-    fetchMessages();
-    
-    // Abonnement aux nouveaux messages via realtime
-    const channel = supabase
-      .channel('patient-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'patient_messages',
-          filter: `patient_id=eq.${patientId}`
+const MessagingTab: React.FC = () => {
+  const [conversations, setConversations] = useState<Conversation[]>([
+    {
+      id: "conv-1",
+      patientName: "Jean Dupont",
+      unreadCount: 2,
+      lastMessage: "Bonjour, j'ai besoin de changer mon rendez-vous de demain...",
+      lastMessageTime: new Date(2025, 3, 15, 10, 30),
+      messages: [
+        { 
+          id: "msg-1", 
+          content: "Bonjour, j'ai besoin de changer mon rendez-vous de demain car j'ai un empêchement. Serait-il possible de le déplacer à la semaine prochaine ?", 
+          timestamp: new Date(2025, 3, 15, 10, 30), 
+          sender: "patient", 
+          read: true 
         },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newMessage = payload.new as PatientMessage;
-            setMessages(prev => [newMessage, ...prev]);
-            
-            // Notifier si le message vient du patient
-            if (newMessage.is_from_patient) {
-              NotificationService.showToastNotification(
-                "Nouveau message du patient", 
-                "Le patient vous a envoyé un nouveau message", 
-                "info"
-              );
-            }
-          }
+        { 
+          id: "msg-2", 
+          content: "Bien sûr, je peux vous proposer mardi ou jeudi prochain à la même heure. Quelle date vous conviendrait le mieux ?", 
+          timestamp: new Date(2025, 3, 15, 11, 15), 
+          sender: "caregiver", 
+          read: true 
+        },
+        { 
+          id: "msg-3", 
+          content: "Mardi serait parfait. Merci beaucoup pour votre flexibilité !", 
+          timestamp: new Date(2025, 3, 15, 11, 45), 
+          sender: "patient", 
+          read: false 
+        },
+        { 
+          id: "msg-4", 
+          content: "J'aurais aussi besoin de savoir si je dois être à jeun pour le prochain rendez-vous?", 
+          timestamp: new Date(2025, 3, 15, 11, 50), 
+          sender: "patient", 
+          read: false 
         }
-      )
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [patientId]);
+      ]
+    },
+    {
+      id: "conv-2",
+      patientName: "Marie Martin",
+      unreadCount: 0,
+      lastMessage: "Je confirme avoir bien pris mes médicaments aujourd'hui.",
+      lastMessageTime: new Date(2025, 3, 14, 15, 20),
+      messages: [
+        { 
+          id: "msg-5", 
+          content: "Bonjour, comment vous sentez-vous aujourd'hui?", 
+          timestamp: new Date(2025, 3, 14, 15, 0), 
+          sender: "caregiver", 
+          read: true 
+        },
+        { 
+          id: "msg-6", 
+          content: "Je me sens beaucoup mieux, merci. Je confirme avoir bien pris mes médicaments aujourd'hui.", 
+          timestamp: new Date(2025, 3, 14, 15, 20), 
+          sender: "patient", 
+          read: true 
+        }
+      ]
+    }
+  ]);
 
-  // Envoi d'un message
-  const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
-      if (!profile?.id) {
-        throw new Error("Non connecté");
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(conversations[0]?.id || null);
+  const [newMessage, setNewMessage] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [selectedConversation, conversations]);
+
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !selectedConversation) return;
+
+    const updatedConversations = conversations.map(conv => {
+      if (conv.id === selectedConversation) {
+        const newMsg: Message = {
+          id: `msg-${Date.now()}`,
+          content: newMessage.trim(),
+          timestamp: new Date(),
+          sender: "caregiver",
+          read: true
+        };
+        return {
+          ...conv,
+          lastMessage: newMessage.trim(),
+          lastMessageTime: new Date(),
+          messages: [...conv.messages, newMsg]
+        };
       }
-      return sendMessage(patientId!, content);
-    },
-    onSuccess: () => {
-      setNewMessage('');
-      toast.success("Message envoyé");
-      queryClient.invalidateQueries({ queryKey: ['patient', patientId, 'messages'] });
-    },
-    onError: (error) => {
-      console.error("Erreur lors de l'envoi du message:", error);
-      toast.error("Erreur lors de l'envoi du message");
-    }
-  });
+      return conv;
+    });
 
-  // Marquer un message comme lu
-  const markAsReadMutation = useMutation({
-    mutationFn: async (messageId: string) => {
-      return markAsRead(messageId);
-    },
-    onSuccess: (data) => {
-      setMessages(prev => 
-        prev.map(msg => msg.id === data?.id ? data : msg)
-      );
-      queryClient.invalidateQueries({ queryKey: ['patient', patientId, 'messages'] });
-    },
-    onError: (error) => {
-      console.error("Erreur lors du marquage du message comme lu:", error);
-    }
-  });
-
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim()) return;
-    
-    sendMessageMutation.mutate(newMessage);
+    setConversations(updatedConversations);
+    setNewMessage("");
+    toast.success("Message envoyé");
   };
 
-  const handleMarkAsRead = (messageId: string) => {
-    markAsReadMutation.mutate(messageId);
+  const handleConversationSelect = (convId: string) => {
+    // Marquer tous les messages comme lus
+    const updatedConversations = conversations.map(conv => {
+      if (conv.id === convId) {
+        return {
+          ...conv,
+          unreadCount: 0,
+          messages: conv.messages.map(msg => ({ ...msg, read: true }))
+        };
+      }
+      return conv;
+    });
+    
+    setConversations(updatedConversations);
+    setSelectedConversation(convId);
+  };
+
+  const formatMessageTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatConversationTime = (date: Date) => {
+    const today = new Date();
+    const isToday = date.getDate() === today.getDate() && 
+                   date.getMonth() === today.getMonth() && 
+                   date.getFullYear() === today.getFullYear();
+    
+    if (isToday) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
+  const handleNewConversation = () => {
+    toast.info("Fonctionnalité nouvelle conversation à implémenter");
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Send className="h-5 w-5" /> Envoyer un message
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSendMessage} className="space-y-4">
-            <Textarea 
-              value={newMessage} 
-              onChange={(e) => setNewMessage(e.target.value)} 
-              placeholder="Écrivez un message au patient..."
-              className="min-h-[100px]"
-            />
-            <div className="flex justify-between">
-              <div className="flex items-center text-sm text-muted-foreground">
-                <Bell className="h-4 w-4 mr-1" />
-                <span>Le patient recevra une notification</span>
+    <div className="flex h-[calc(100vh-220px)] overflow-hidden border rounded-md">
+      {/* Liste des conversations */}
+      <div className="w-1/3 border-r overflow-y-auto">
+        <div className="p-4 border-b flex justify-between items-center">
+          <h3 className="font-semibold">Messages</h3>
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={handleNewConversation} aria-label="Nouvelle conversation">
+            <Plus size={16} />
+          </Button>
+        </div>
+        <div className="divide-y">
+          {conversations.map(conv => (
+            <div 
+              key={conv.id} 
+              className={`p-4 cursor-pointer hover:bg-muted/50 ${selectedConversation === conv.id ? 'bg-muted' : ''}`}
+              onClick={() => handleConversationSelect(conv.id)}
+            >
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={conv.avatar} alt={conv.patientName} />
+                  <AvatarFallback>
+                    {conv.patientName.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-baseline">
+                    <h4 className="font-medium truncate">{conv.patientName}</h4>
+                    <span className="text-xs text-muted-foreground">
+                      {formatConversationTime(conv.lastMessageTime)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">{conv.lastMessage}</p>
+                </div>
+                {conv.unreadCount > 0 && (
+                  <Badge className="ml-auto flex-shrink-0">{conv.unreadCount}</Badge>
+                )}
               </div>
-              <Button 
-                type="submit" 
-                disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                className="flex items-center gap-2"
-              >
-                <Send size={16} /> Envoyer
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Zone de conversation */}
+      <div className="flex-1 flex flex-col">
+        {selectedConversation ? (
+          <>
+            {/* En-tête de conversation */}
+            <div className="p-4 border-b flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback>
+                    {conversations.find(c => c.id === selectedConversation)?.patientName.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <h3 className="font-semibold">
+                  {conversations.find(c => c.id === selectedConversation)?.patientName}
+                </h3>
+              </div>
+              <Button variant="ghost" size="icon" aria-label="Plus d'options">
+                <ChevronDown size={18} />
               </Button>
             </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <FileSearch className="h-5 w-5" /> Historique des messages
-          </CardTitle>
-          
-          <Button variant="outline" size="sm" className="h-8" onClick={() => setMessages([])}>
-            Actualiser
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {loading ? (
-              <>
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-[250px]" />
-                  <Skeleton className="h-20 w-full" />
-                </div>
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-[200px]" />
-                  <Skeleton className="h-16 w-full" />
-                </div>
-              </>
-            ) : messages.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Aucun message échangé avec ce patient
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {messages.map((message) => (
+            
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {conversations
+                .find(c => c.id === selectedConversation)
+                ?.messages.map(msg => (
                   <div 
-                    key={message.id}
-                    className={cn(
-                      "p-4 rounded-lg",
-                      message.is_from_patient 
-                        ? "bg-muted/60 border border-border" 
-                        : "bg-primary/10"
-                    )}
+                    key={msg.id} 
+                    className={`flex ${msg.sender === 'caregiver' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="font-medium flex items-center gap-1">
-                        {message.is_from_patient ? (
-                          <>
-                            <Bell size={14} className="text-blue-500" /> Patient
-                          </>
-                        ) : (
-                          <>
-                            <Send size={14} className="text-green-500" /> Soignant
-                          </>
-                        )}
-                      </span>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {message.created_at && (
-                          <span>
-                            {format(new Date(message.created_at), 'EEEE d MMMM à HH:mm', { locale: fr })}
-                          </span>
-                        )}
-                        {message.is_from_patient && (
-                          message.read_at ? (
-                            <CheckCheck size={14} className="text-green-500" title="Lu" />
-                          ) : (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-6 w-6" 
-                              onClick={() => handleMarkAsRead(message.id)}
-                              title="Marquer comme lu"
-                            >
-                              <Clock size={14} />
-                            </Button>
-                          )
+                    <div 
+                      className={`max-w-[75%] p-3 rounded-lg ${
+                        msg.sender === 'caregiver' 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'bg-muted'
+                      }`}
+                    >
+                      <p>{msg.content}</p>
+                      <div className={`text-xs mt-1 flex items-center justify-end gap-1 ${
+                        msg.sender === 'caregiver' ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                      }`}>
+                        {formatMessageTime(msg.timestamp)}
+                        {msg.sender === 'caregiver' && (
+                          msg.read 
+                            ? <CheckCircle size={12} className="ml-1" aria-label="Lu" />
+                            : <Clock size={12} className="ml-1" aria-label="Envoyé" />
                         )}
                       </div>
                     </div>
-                    <p className="whitespace-pre-wrap">{message.content}</p>
                   </div>
                 ))}
+              <div ref={messagesEndRef} />
+            </div>
+            
+            {/* Zone de saisie */}
+            <div className="p-4 border-t">
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="h-10 w-10 p-0" 
+                  onClick={() => toast.info("Fonctionnalité pièce jointe à implémenter")}
+                  aria-label="Ajouter une pièce jointe"
+                >
+                  <Paperclip size={18} />
+                </Button>
+                <Input 
+                  value={newMessage} 
+                  onChange={e => setNewMessage(e.target.value)} 
+                  placeholder="Écrivez votre message..." 
+                  className="flex-1"
+                  onKeyPress={e => e.key === 'Enter' && handleSendMessage()}
+                />
+                <Button 
+                  onClick={handleSendMessage} 
+                  disabled={!newMessage.trim()}
+                  aria-label="Envoyer le message"
+                >
+                  <Send size={18} />
+                </Button>
               </div>
-            )}
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <User size={48} className="mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">Aucune conversation sélectionnée</h3>
+              <p className="text-muted-foreground mt-1">
+                Sélectionnez une conversation ou créez-en une nouvelle
+              </p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </div>
   );
 };

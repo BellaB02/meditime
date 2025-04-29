@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,11 +10,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Pencil, Plus, User, Calendar, ListChecks, HeartPulse, FileText, MessageSquare } from "lucide-react";
 import { PatientInfoService, PatientInfo } from "@/services/PatientInfoService";
 import { VitalSignsService, VitalSign } from "@/services/VitalSignsService";
-import { VitalSignsTab } from "@/components/patient/VitalSignsTab";
-import { CareSheetsTab } from "@/components/patient/CareSheetsTab";
-import { AppointmentsTab } from "@/components/patient/AppointmentsTab";
-import { DocumentsTab } from "@/components/patient/DocumentsTab";
-import { MessagingTab } from "@/components/patient/MessagingTab";
+import VitalSignsTab from "@/components/patient/VitalSignsTab";
+import CareSheetsTab from "@/components/patient/CareSheetsTab";
+import AppointmentsTab from "@/components/patient/AppointmentsTab";
+import DocumentsTab from "@/components/patient/DocumentsTab";
+import MessagingTab from "@/components/patient/MessagingTab";
 import ExportDataButton from "@/components/patient/ExportDataButton";
 
 interface PatientFileProps {

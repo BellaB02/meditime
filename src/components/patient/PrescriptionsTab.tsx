@@ -28,7 +28,7 @@ const PrescriptionsTab: React.FC<PrescriptionsTabProps> = ({ prescriptions: init
       title: "Nouvelle ordonnance",
       date: new Date().toLocaleDateString('fr-FR'),
       doctor: "Dr. Martin",
-      file: "/documents/ordonnance_new.pdf"
+      file: "/documents/aide_memoire_cotation_ngap.pdf" // Utiliser un fichier existant pour simuler
     };
     
     setPrescriptions([newPrescription, ...prescriptions]);
@@ -50,8 +50,28 @@ const PrescriptionsTab: React.FC<PrescriptionsTabProps> = ({ prescriptions: init
   };
   
   const handleDownload = (prescription: Prescription) => {
-    toast.success(`Téléchargement de l'ordonnance: ${prescription.title}`);
-    // Dans une application réelle, cela redirigerait vers le fichier ou déclencherait un téléchargement
+    try {
+      // Créer un lien pour télécharger le fichier PDF
+      const link = document.createElement('a');
+      
+      // Utiliser le fichier existant ou une alternative
+      const fileUrl = prescription.file || '/documents/aide_memoire_cotation_ngap.pdf';
+      link.href = fileUrl;
+      
+      // Définir un nom de fichier basé sur le titre de la prescription
+      const fileName = `${prescription.title.replace(/\s+/g, '_').toLowerCase()}.pdf`;
+      link.setAttribute('download', fileName);
+      
+      // Ajouter le lien au document, cliquer dessus, puis le supprimer
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success(`Téléchargement de l'ordonnance: ${prescription.title}`);
+    } catch (error) {
+      console.error("Erreur lors du téléchargement:", error);
+      toast.error("Erreur lors du téléchargement de l'ordonnance");
+    }
   };
 
   return (

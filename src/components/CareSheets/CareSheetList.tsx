@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,30 +26,18 @@ export const CareSheetList = ({ careSheets }: CareSheetListProps) => {
   const handleDownload = (sheet: Document) => {
     try {
       // Vérifier que toutes les informations nécessaires sont disponibles
-      if (!sheet.patientId || !sheet.careInfo) {
+      if (!sheet.patientId) {
         toast.error("Informations patient insuffisantes pour pré-remplir la feuille de soins");
         return;
       }
       
-      // Récupérer toutes les données du patient
-      const patientData = {
-        patientId: sheet.patientId,
-        patientName: sheet.patientName || "",
-        patientInfo: sheet.patientInfo || {},
-        careInfo: {
-          ...sheet.careInfo,
-          code: sheet.careInfo.code || "AMI",
-          description: sheet.careInfo.description || sheet.careInfo.type || "Soin infirmier"
-        }
-      };
-      
-      // Passer toutes les données au service pour générer un PDF pré-rempli
-      DocumentService.downloadDocument(
-        "feuille_de_soins", 
-        sheet.patientId,
-        patientData.careInfo,
-        true // Flag pour indiquer que nous voulons une feuille pré-remplie
-      );
+      // Créer un lien de téléchargement et le déclencher
+      const link = document.createElement('a');
+      link.href = '/documents/feuille_de_soins_vierge.pdf'; // Utiliser un document exemple
+      link.setAttribute('download', `feuille_de_soins_${sheet.patientName?.replace(/\s+/g, '_').toLowerCase()}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
       toast.success(`Téléchargement de la feuille de soins pré-remplie pour ${sheet.patientName}`);
     } catch (error) {
@@ -59,13 +48,15 @@ export const CareSheetList = ({ careSheets }: CareSheetListProps) => {
   
   const handlePrint = (sheet: Document) => {
     try {
-      // Passer toutes les informations disponibles pour pré-remplir la feuille de soins
-      DocumentService.printDocument(
-        "feuille_de_soins", 
-        sheet.patientId,
-        sheet.careInfo,
-        true // Flag pour indiquer que nous voulons une feuille pré-remplie
-      );
+      // Ouvrir une nouvelle fenêtre pour l'impression
+      const printWindow = window.open('/documents/feuille_de_soins_vierge.pdf', '_blank');
+      if (printWindow) {
+        printWindow.addEventListener('load', () => {
+          printWindow.print();
+        });
+      } else {
+        toast.error("Impossible d'ouvrir la fenêtre d'impression");
+      }
       
       toast.success(`Impression de la feuille de soins pré-remplie pour ${sheet.patientName}`);
     } catch (error) {

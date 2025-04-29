@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -220,15 +219,65 @@ const AdminTasks = () => {
   };
 
   const handleDownloadBilling = (id: string) => {
-    toast.success(`Téléchargement de la facturation ${id}`);
+    try {
+      // Simuler le téléchargement d'un fichier
+      const link = document.createElement('a');
+      link.href = '/documents/feuille_de_soins_vierge.pdf'; // Utilisation d'un document exemple
+      link.setAttribute('download', `facturation_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success(`Téléchargement de la facturation ${id}`);
+    } catch (error) {
+      console.error("Erreur de téléchargement:", error);
+      toast.error("Erreur lors du téléchargement");
+    }
   };
 
   const handlePrintBilling = (id: string) => {
-    toast.success(`Impression de la facturation ${id}`);
+    try {
+      // Ouvrir une nouvelle fenêtre pour l'impression
+      const printWindow = window.open('/documents/feuille_de_soins_vierge.pdf', '_blank');
+      if (printWindow) {
+        printWindow.addEventListener('load', () => {
+          printWindow.print();
+        });
+      } else {
+        toast.error("Impossible d'ouvrir la fenêtre d'impression");
+      }
+      
+      toast.success(`Impression de la facturation ${id}`);
+    } catch (error) {
+      console.error("Erreur d'impression:", error);
+      toast.error("Erreur lors de l'impression");
+    }
   };
 
   const handleDownloadDocument = (title: string) => {
-    toast.success(`Téléchargement du document: ${title}`);
+    try {
+      // Associer chaque document à un fichier PDF correspondant
+      let pdfFile = '/documents/feuille_de_soins_vierge.pdf'; // Document par défaut
+      
+      if (title === "Guide de cotation NGAP") {
+        pdfFile = '/documents/aide_memoire_cotation_ngap.pdf';
+      } else if (title === "Formulaire d'entente préalable") {
+        pdfFile = '/documents/guide_incompatibilites.pdf'; // Exemple, à remplacer par le bon document
+      }
+      
+      // Créer un lien de téléchargement et le déclencher
+      const link = document.createElement('a');
+      link.href = pdfFile;
+      link.setAttribute('download', `${title.replace(/\s+/g, '_').toLowerCase()}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success(`Téléchargement du document: ${title}`);
+    } catch (error) {
+      console.error("Erreur de téléchargement:", error);
+      toast.error("Erreur lors du téléchargement");
+    }
   };
 
   const handleNewBilling = () => {

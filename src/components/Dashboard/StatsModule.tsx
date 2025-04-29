@@ -1,230 +1,208 @@
 
-import React, { useEffect, useState } from 'react';
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Chart } from "@/components/ui/chart";
-import { 
-  UserRound, 
-  CalendarClock, 
-  ActivitySquare, 
-  BellRing,
-  TrendingUp 
-} from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { BookUser, Calendar, CheckCircle, Clock, TrendingUp, Users } from "lucide-react";
 
-interface StatsData {
-  totalPatients: number;
-  activeAppointments: number;
-  completedAppointments: number;
-  unreadMessages: number;
-  monthlyCareData: { date: string; count: number }[];
+const patientData = [
+  { month: 'Jan', actifs: 20, nouveaux: 5 },
+  { month: 'Fév', actifs: 25, nouveaux: 8 },
+  { month: 'Mar', actifs: 30, nouveaux: 12 },
+  { month: 'Avr', actifs: 28, nouveaux: 6 },
+  { month: 'Mai', actifs: 32, nouveaux: 10 },
+  { month: 'Juin', actifs: 35, nouveaux: 7 },
+];
+
+const appointmentData = [
+  { day: 'Lun', réalisés: 8, planifiés: 10 },
+  { day: 'Mar', réalisés: 12, planifiés: 15 },
+  { day: 'Mer', réalisés: 10, planifiés: 11 },
+  { day: 'Jeu', réalisés: 15, planifiés: 15 },
+  { day: 'Ven', réalisés: 9, planifiés: 12 },
+  { day: 'Sam', réalisés: 5, planifiés: 6 },
+  { day: 'Dim', réalisés: 3, planifiés: 3 },
+];
+
+const invoiceData = [
+  { month: 'Jan', montant: 1200 },
+  { month: 'Fév', montant: 1500 },
+  { month: 'Mar', montant: 1800 },
+  { month: 'Avr', montant: 1600 },
+  { month: 'Mai', montant: 2100 },
+  { month: 'Juin', montant: 2400 },
+];
+
+// Données cumulatives pour le graphique de zone
+const growthData = [
+  { month: 'Jan', patients: 20 },
+  { month: 'Fév', patients: 45 },
+  { month: 'Mar', patients: 75 },
+  { month: 'Avr', patients: 103 },
+  { month: 'Mai', patients: 135 },
+  { month: 'Juin', patients: 170 },
+];
+
+// Composant de tuile statistique
+interface StatTileProps {
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  change?: string;
+  isPositive?: boolean;
 }
 
-export function StatsModule() {
-  const [loading, setLoading] = useState(true);
-  const [statsData, setStatsData] = useState<StatsData>({
-    totalPatients: 0,
-    activeAppointments: 0,
-    completedAppointments: 0,
-    unreadMessages: 0,
-    monthlyCareData: [],
-  });
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      setLoading(true);
-      try {
-        // Récupérer le nombre total de patients
-        const { count: patientCount } = await supabase
-          .from('patients')
-          .select('*', { count: 'exact', head: true });
-        
-        // Récupérer le nombre de rendez-vous actifs
-        const { count: activeAppCount } = await supabase
-          .from('appointments')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'scheduled');
-        
-        // Récupérer le nombre de rendez-vous terminés
-        const { count: completedAppCount } = await supabase
-          .from('appointments')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'completed');
-        
-        // Récupérer le nombre de messages non lus
-        const { count: unreadMsgCount } = await supabase
-          .from('patient_messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_from_patient', true)
-          .is('read_at', null);
-        
-        // Récupérer les données de soins mensuels
-        const sixMonthsAgo = new Date();
-        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-        
-        const { data: monthlyData } = await supabase
-          .from('appointments')
-          .select('date')
-          .gte('date', sixMonthsAgo.toISOString().split('T')[0])
-          .eq('status', 'completed');
-          
-        // Traiter les données mensuelles
-        const monthlyCounts: Record<string, number> = {};
-        const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-        
-        const now = new Date();
-        for (let i = 0; i < 6; i++) {
-          const d = new Date(now);
-          d.setMonth(now.getMonth() - i);
-          const monthKey = `${months[d.getMonth()]} ${d.getFullYear()}`;
-          monthlyCounts[monthKey] = 0;
-        }
-        
-        // Compter les rendez-vous par mois
-        monthlyData?.forEach(app => {
-          const date = new Date(app.date);
-          const monthKey = `${months[date.getMonth()]} ${date.getFullYear()}`;
-          if (monthKey in monthlyCounts) {
-            monthlyCounts[monthKey]++;
-          }
-        });
-        
-        // Convertir en tableau pour le graphique
-        const monthlyCareData = Object.entries(monthlyCounts)
-          .map(([date, count]) => ({ date, count }))
-          .reverse();
-        
-        setStatsData({
-          totalPatients: patientCount || 0,
-          activeAppointments: activeAppCount || 0,
-          completedAppointments: completedAppCount || 0,
-          unreadMessages: unreadMsgCount || 0,
-          monthlyCareData,
-        });
-      } catch (error) {
-        console.error("Erreur lors de la récupération des statistiques:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-64 md:col-span-4" />
-      </div>
-    );
-  }
-
+const StatTile: React.FC<StatTileProps> = ({ title, value, icon, change, isPositive = true }) => {
   return (
-    <>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Patients</CardTitle>
-            <UserRound className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statsData.totalPatients}</div>
-            <p className="text-xs text-muted-foreground">patients enregistrés</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rendez-vous actifs</CardTitle>
-            <CalendarClock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statsData.activeAppointments}</div>
-            <p className="text-xs text-muted-foreground">rendez-vous à venir</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Soins réalisés</CardTitle>
-            <ActivitySquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statsData.completedAppointments}</div>
-            <p className="text-xs text-muted-foreground">rendez-vous terminés</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Messages</CardTitle>
-            <BellRing className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statsData.unreadMessages}</div>
-            <p className="text-xs text-muted-foreground">messages non lus</p>
-          </CardContent>
-        </Card>
+    <Card className="relative overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <div className="p-1 bg-primary/10 rounded-full text-primary">
+          {icon}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        {change && (
+          <p className={`text-xs mt-1 ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+            {isPositive ? '↑' : '↓'} {change} {isPositive ? 'augmentation' : 'diminution'}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Types de graphiques
+type ChartType = "bar" | "area";
+
+// Composant principal
+const StatsModule: React.FC = () => {
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-semibold tracking-tight">Statistiques</h2>
+      
+      {/* Grid de statistiques */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatTile 
+          title="Patients actifs" 
+          value="170"
+          icon={<Users size={18} />} 
+          change="12%" 
+          isPositive={true}
+        />
+        <StatTile 
+          title="Rendez-vous ce mois" 
+          value="216" 
+          icon={<Calendar size={18} />}
+          change="8%" 
+          isPositive={true}
+        />
+        <StatTile 
+          title="Taux de complétion" 
+          value="94%" 
+          icon={<CheckCircle size={18} />}
+          change="3%" 
+          isPositive={true}
+        />
+        <StatTile 
+          title="Chiffre d'affaires" 
+          value="2400 €" 
+          icon={<TrendingUp size={18} />}
+          change="15%" 
+          isPositive={true}
+        />
       </div>
       
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Évolution des soins
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Chart 
-            options={{
-              chart: {
-                type: 'area',
-                toolbar: {
-                  show: false,
-                },
-                zoom: {
-                  enabled: false,
-                }
-              },
-              dataLabels: {
-                enabled: false
-              },
-              stroke: {
-                curve: 'smooth',
-                width: 2,
-              },
-              fill: {
-                type: 'gradient',
-                gradient: {
-                  shadeIntensity: 1,
-                  opacityFrom: 0.7,
-                  opacityTo: 0.3,
-                }
-              },
-              xaxis: {
-                categories: statsData.monthlyCareData.map(data => data.date),
-                labels: {
-                  style: {
-                    fontSize: '12px',
-                  },
-                }
-              }
-            }}
-            series={[
-              {
-                name: 'Soins réalisés',
-                data: statsData.monthlyCareData.map(data => data.count),
-              }
-            ]}
-            type="area"
-            height={300}
-          />
-        </CardContent>
-      </Card>
-    </>
+      {/* Graphiques */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Graphique de patients */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center text-base font-medium">
+              <BookUser className="mr-2 h-4 w-4 text-primary" />
+              Évolution des patients
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={patientData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="actifs" name="Patients actifs" fill="#9b87f5" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="nouveaux" name="Nouveaux patients" fill="#D6BCFA" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        
+        {/* Graphique de rendez-vous */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center text-base font-medium">
+              <Clock className="mr-2 h-4 w-4 text-primary" />
+              Rendez-vous hebdomadaires
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={appointmentData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="day" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="réalisés" name="RDV réalisés" fill="#9b87f5" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="planifiés" name="RDV planifiés" fill="#D6BCFA" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        
+        {/* Graphique de facturation */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center text-base font-medium">
+              <TrendingUp className="mr-2 h-4 w-4 text-primary" />
+              Facturation mensuelle
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={invoiceData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(value) => [`${value} €`, 'Montant']} />
+                <Bar dataKey="montant" name="Montant" fill="#9b87f5" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        
+        {/* Graphique de croissance */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center text-base font-medium">
+              <Users className="mr-2 h-4 w-4 text-primary" />
+              Croissance de la patientèle
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={growthData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(value) => [value, 'Patients cumulés']} />
+                <Area type="monotone" dataKey="patients" stroke="#9b87f5" fill="#9b87f5" fillOpacity={0.3} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
-}
+};
+
+export default StatsModule;

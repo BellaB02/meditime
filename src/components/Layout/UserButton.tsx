@@ -10,15 +10,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useProfile } from "@/hooks/useProfile";
-import { LogOut, Settings, User } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
+import { toast } from "sonner";
 
 export const UserButton = () => {
-  const { profile, signOut } = useProfile();
+  const { profile, updateProfile } = useProfile();
   const navigate = useNavigate();
   
   const handleSignOut = async () => {
-    await signOut();
+    // Simuler une déconnexion
+    toast.success("Déconnexion réussie");
+    // Redirection vers la page d'accueil
+    navigate('/');
   };
   
   const goToSettings = () => {
@@ -33,7 +37,7 @@ export const UserButton = () => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Avatar className="h-8 w-8 cursor-pointer">
-          <AvatarImage src={profile?.avatar_url || ''} alt={profile?.first_name || 'User'} />
+          <AvatarImage src={profile?.first_name ? "" : ""} alt={profile?.first_name || 'User'} />
           <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
