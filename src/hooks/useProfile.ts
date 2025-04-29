@@ -28,17 +28,20 @@ export function useProfile() {
       try {
         setLoading(true);
         
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
+        // Utilisation de la méthode rpc pour contourner les limitations de typage
+        const { data, error } = await supabase.rpc('get_profile', {
+          user_id: user.id
+        });
 
         if (error) {
-          throw error;
+          console.error('Erreur lors du chargement du profil:', error.message);
+          setLoading(false);
+          return;
         }
 
-        setProfile(data);
+        if (data) {
+          setProfile(data as Profile);
+        }
       } catch (error: any) {
         console.error('Erreur lors du chargement du profil:', error.message);
       } finally {
@@ -53,27 +56,29 @@ export function useProfile() {
     if (!user) return;
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id);
+      // Utilisation de la méthode rpc pour contourner les limitations de typage
+      const { error } = await supabase.rpc('update_user_profile', {
+        user_id: user.id,
+        profile_data: updates
+      });
 
       if (error) {
         throw error;
       }
 
-      // Refresh profile data
-      const { data, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      // Récupérer le profil mis à jour
+      const { data, error: fetchError } = await supabase.rpc('get_profile', {
+        user_id: user.id
+      });
 
       if (fetchError) {
         throw fetchError;
       }
 
-      setProfile(data);
+      if (data) {
+        setProfile(data as Profile);
+      }
+      
       toast.success('Profil mis à jour avec succès');
     } catch (error: any) {
       toast.error(`Erreur lors de la mise à jour du profil: ${error.message}`);

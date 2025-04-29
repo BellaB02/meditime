@@ -112,17 +112,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     
     try {
-      const updates = {
-        first_name: data.firstName,
-        last_name: data.lastName,
-        updated_at: new Date().toISOString(),
-      };
+      // Utilisation de rpc au lieu d'accès direct à la table profiles
+      const { error } = await supabase.rpc('update_user_profile', {
+        user_id: user.id,
+        profile_data: {
+          first_name: data.firstName,
+          last_name: data.lastName,
+          updated_at: new Date().toISOString()
+        }
+      });
       
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id);
-        
       if (error) {
         throw error;
       }
