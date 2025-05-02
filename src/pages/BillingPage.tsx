@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +43,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBillingService } from "@/hooks/useBillingService";
 import { PDFGenerationService } from "@/services/PDFGenerationService";
+import { BillingService } from "@/services/BillingService";
 
 // Types
 interface BillingFormValues {
@@ -52,24 +52,6 @@ interface BillingFormValues {
   acts: string[];
   majorations: string[];
   comment: string;
-}
-
-interface InvoiceInfo {
-  id: string;
-  date: string;
-  amount: number;
-  details: {
-    description: string;
-    quantity: number;
-    unitPrice: number;
-    total: number;
-  }[];
-  patientId: string;
-  patientDetails: any;
-  paid: boolean;
-  totalAmount: number;
-  majorations: any[];
-  careCode: string;
 }
 
 const BillingPage = () => {
@@ -82,9 +64,7 @@ const BillingPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { 
     useBillingRecords, 
-    useCreateBillingRecord, 
-    useDetailedBillingRecord,
-    getBillingDetails  // Extract this method from the hook
+    useCreateBillingRecord
   } = useBillingService();
   
   // Get billing records
@@ -256,120 +236,20 @@ const BillingPage = () => {
     }
   };
 
+  // Utiliser notre nouveau service pour télécharger les factures
   const handleDownloadInvoice = async (invoice: any) => {
     try {
-      console.log("Téléchargement de la facture pour:", invoice);
-      
-      // Récupérer les détails complets depuis le service Supabase
-      const billingDetails = await getBillingDetails(invoice.id);
-      console.log("Détails complets récupérés:", billingDetails);
-      
-      const patientName = billingDetails.patients ? 
-        `${billingDetails.patients.first_name || ""} ${billingDetails.patients.last_name || ""}`.trim() : 
-        "Patient";
-      
-      // Préparer les détails pour la facture
-      const invoiceInfo: InvoiceInfo = {
-        id: invoice.id.substring(0, 8),
-        date: format(new Date(invoice.created_at), "dd/MM/yyyy"),
-        amount: parseFloat(invoice.total_amount || 0),
-        details: [
-          {
-            description: `${invoice.care_code} - Acte de soins`,
-            quantity: invoice.quantity || 1,
-            unitPrice: parseFloat(invoice.base_amount || 0),
-            total: parseFloat(invoice.base_amount || 0)
-          },
-          ...(invoice.majorations || []).map((maj: any) => ({
-            description: `${maj.code} - ${maj.description}`,
-            quantity: 1,
-            unitPrice: parseFloat(maj.rate || 0),
-            total: parseFloat(maj.rate || 0)
-          }))
-        ],
-        patientId: invoice.patient_id,
-        patientDetails: billingDetails.patients,
-        paid: invoice.payment_status === "paid",
-        totalAmount: parseFloat(invoice.total_amount || 0),
-        majorations: invoice.majorations,
-        careCode: invoice.care_code
-      };
-      
-      console.log("Données préparées pour la génération PDF:", invoiceInfo);
-      
-      // Générer et télécharger le PDF
-      const pdfDoc = PDFGenerationService.generateInvoicePDF(invoiceInfo);
-      if (pdfDoc) {
-        PDFGenerationService.saveInvoicePDF(pdfDoc, invoiceInfo.id);
-        toast.success(`Téléchargement de la facture ${invoiceInfo.id} pour ${patientName}`);
-      } else {
-        toast.error("Erreur lors de la génération du PDF");
-      }
+      await BillingService.downloadInvoice(invoice.id);
     } catch (error) {
       console.error("Erreur lors du téléchargement de la facture:", error);
       toast.error("Erreur lors du téléchargement de la facture");
     }
   };
 
+  // Utiliser notre nouveau service pour imprimer les factures
   const handlePrintInvoice = async (invoice: any) => {
     try {
-      console.log("Impression de la facture pour:", invoice);
-      
-      // Récupérer les détails complets depuis le service Supabase
-      const billingDetails = await getBillingDetails(invoice.id);
-      console.log("Détails complets récupérés pour impression:", billingDetails);
-      
-      const patientName = billingDetails.patients ? 
-        `${billingDetails.patients.first_name || ""} ${billingDetails.patients.last_name || ""}`.trim() : 
-        "Patient";
-      
-      // Préparer les détails pour la facture
-      const invoiceInfo: InvoiceInfo = {
-        id: invoice.id.substring(0, 8),
-        date: format(new Date(invoice.created_at), "dd/MM/yyyy"),
-        amount: parseFloat(invoice.total_amount || 0),
-        details: [
-          {
-            description: `${invoice.care_code} - Acte de soins`,
-            quantity: invoice.quantity || 1,
-            unitPrice: parseFloat(invoice.base_amount || 0),
-            total: parseFloat(invoice.base_amount || 0)
-          },
-          ...(invoice.majorations || []).map((maj: any) => ({
-            description: `${maj.code} - ${maj.description}`,
-            quantity: 1,
-            unitPrice: parseFloat(maj.rate || 0),
-            total: parseFloat(maj.rate || 0)
-          }))
-        ],
-        patientId: invoice.patient_id,
-        patientDetails: billingDetails.patients,
-        paid: invoice.payment_status === "paid",
-        totalAmount: parseFloat(invoice.total_amount || 0),
-        majorations: invoice.majorations,
-        careCode: invoice.care_code
-      };
-      
-      // Générer le PDF pour impression
-      const pdfDoc = PDFGenerationService.generateInvoicePDF(invoiceInfo);
-      if (pdfDoc) {
-        const pdfUrl = PDFGenerationService.preparePDFForPrint(pdfDoc);
-        if (pdfUrl) {
-          const printWindow = window.open(pdfUrl, "_blank");
-          if (printWindow) {
-            printWindow.onload = () => {
-              printWindow.print();
-            };
-            toast.success(`Impression de la facture ${invoiceInfo.id} pour ${patientName}`);
-          } else {
-            toast.error("Impossible d'ouvrir la fenêtre d'impression");
-          }
-        } else {
-          toast.error("Erreur lors de la préparation du PDF pour impression");
-        }
-      } else {
-        toast.error("Erreur lors de la génération du PDF");
-      }
+      await BillingService.printInvoice(invoice.id);
     } catch (error) {
       console.error("Erreur lors de l'impression de la facture:", error);
       toast.error("Erreur lors de l'impression de la facture");
@@ -414,7 +294,7 @@ const BillingPage = () => {
             ) : (
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="space-y-4">
+                  
                     {/* Patient */}
                     <FormField
                       control={form.control}
@@ -583,7 +463,7 @@ const BillingPage = () => {
                         </FormItem>
                       )}
                     />
-                  </div>
+                  
                   
                   <div className="flex justify-between items-center pt-4 border-t">
                     <div className="text-xl font-semibold flex items-center">
@@ -609,6 +489,7 @@ const BillingPage = () => {
             <CardTitle>Aide à la facturation</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            
             <div className="p-4 bg-muted rounded-lg">
               <h4 className="font-medium mb-2">Règles de facturation</h4>
               <ul className="space-y-2 text-sm">
@@ -663,6 +544,7 @@ const BillingPage = () => {
                 </Button>
               </div>
             </div>
+          
           </CardContent>
         </Card>
       </div>

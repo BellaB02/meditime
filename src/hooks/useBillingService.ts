@@ -2,7 +2,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { billingService } from '@/integrations/supabase/services/billingService';
 import { toast } from 'sonner';
-import { patientsService } from '@/integrations/supabase/services/patientsService';
 
 export function useBillingService() {
   const queryClient = useQueryClient();
@@ -99,11 +98,6 @@ export function useBillingService() {
       enabled: !!recordId,
     });
   };
-  
-  // Expose direct access to getBillingDetails for use in non-hook contexts
-  const getBillingDetails = (recordId: string) => {
-    return billingService.getBillingDetails(recordId);
-  };
 
   return {
     useBillingRecords,
@@ -111,7 +105,6 @@ export function useBillingService() {
     useCreateBillingRecord,
     useUpdateTransmissionStatus,
     useUpdatePaymentStatus,
-    useDetailedBillingRecord,
-    getBillingDetails // Export the direct access method
+    useDetailedBillingRecord
   };
 }
