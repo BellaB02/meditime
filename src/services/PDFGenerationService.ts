@@ -1,3 +1,4 @@
+
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
 import { DateFormatService } from "./DateFormatService";
@@ -52,9 +53,10 @@ export const PDFGenerationService = {
   /**
    * Génère un PDF pré-rempli avec les informations patient et soins
    */
-  generatePrefilledPDF: (patientId?: string, careInfo?: CareInfo, prescriptions?: PrescriptionInfo[]): jsPDF | null => {
+  generatePrefilledPDF: async (patientId?: string, careInfo?: CareInfo, prescriptions?: PrescriptionInfo[]): Promise<jsPDF | null> => {
     try {
-      const patientInfo = PatientService.validatePatientInfoSync(patientId);
+      // Change to async call
+      const patientInfo = await PatientService.getPatientInfo(patientId);
       
       if (!patientInfo) {
         return null;

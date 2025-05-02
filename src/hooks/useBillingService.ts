@@ -99,6 +99,11 @@ export function useBillingService() {
       enabled: !!recordId,
     });
   };
+  
+  // Expose direct access to getBillingDetails for use in non-hook contexts
+  const getBillingDetails = (recordId: string) => {
+    return billingService.getBillingDetails(recordId);
+  };
 
   return {
     useBillingRecords,
@@ -106,6 +111,7 @@ export function useBillingService() {
     useCreateBillingRecord,
     useUpdateTransmissionStatus,
     useUpdatePaymentStatus,
-    useDetailedBillingRecord
+    useDetailedBillingRecord,
+    getBillingDetails // Export the direct access method
   };
 }

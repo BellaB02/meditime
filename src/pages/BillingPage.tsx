@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -79,7 +80,12 @@ const BillingPage = () => {
   const [majorationsData, setMajorationsData] = useState<any[]>([]);
   const [patientsData, setPatientsData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { useBillingRecords, useCreateBillingRecord } = useBillingService();
+  const { 
+    useBillingRecords, 
+    useCreateBillingRecord, 
+    useDetailedBillingRecord,
+    getBillingDetails  // Extract this method from the hook
+  } = useBillingService();
   
   // Get billing records
   const { data: billingRecords = [], isLoading: isLoadingBilling } = useBillingRecords();
@@ -255,7 +261,7 @@ const BillingPage = () => {
       console.log("Téléchargement de la facture pour:", invoice);
       
       // Récupérer les détails complets depuis le service Supabase
-      const billingDetails = await billingService.getBillingDetails(invoice.id);
+      const billingDetails = await getBillingDetails(invoice.id);
       console.log("Détails complets récupérés:", billingDetails);
       
       const patientName = billingDetails.patients ? 
@@ -310,7 +316,7 @@ const BillingPage = () => {
       console.log("Impression de la facture pour:", invoice);
       
       // Récupérer les détails complets depuis le service Supabase
-      const billingDetails = await billingService.getBillingDetails(invoice.id);
+      const billingDetails = await getBillingDetails(invoice.id);
       console.log("Détails complets récupérés pour impression:", billingDetails);
       
       const patientName = billingDetails.patients ? 
