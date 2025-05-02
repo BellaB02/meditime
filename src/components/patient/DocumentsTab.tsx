@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePatientsService } from "@/hooks/usePatientsService";
 import { CareDocument } from "@/integrations/supabase/services/types";
+import { PrescriptionInfo } from "@/services/PDFTypes";
 
 interface DocumentsTabProps {
   patientId: string;
@@ -123,17 +124,22 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ patientId }) => {
     }
   };
   
+  // Sample prescription data
+  const samplePrescription: PrescriptionInfo[] = [{
+    id: "pre-1",
+    name: "Paracétamol",
+    dosage: "1000mg",
+    frequency: "3 fois par jour",
+    startDate: "15/04/2025",
+    title: "Ordonnance de renouvellement",
+    date: "15/04/2025",
+    doctor: "Dr. Martin",
+    file: "/documents/aide_memoire_cotation_ngap.pdf"
+  }];
+  
   return (
     <div className="space-y-6">
-      <PrescriptionsTab prescriptions={[
-        {
-          id: "pre-1",
-          title: "Ordonnance de renouvellement",
-          date: "15/04/2025",
-          doctor: "Dr. Martin",
-          file: "/documents/aide_memoire_cotation_ngap.pdf"
-        }
-      ]} patientName="Patient" />
+      <PrescriptionsTab prescriptions={samplePrescription} patientName="Patient" />
       
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

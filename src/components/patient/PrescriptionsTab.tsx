@@ -4,27 +4,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Prescription } from "@/services/PatientService";
 import { AddPrescriptionDialog } from "./dialogs/AddPrescriptionDialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { PrescriptionInfo } from "@/services/PDFTypes";
 
 type PrescriptionsTabProps = {
-  prescriptions: Prescription[];
+  prescriptions: PrescriptionInfo[];
   patientName: string;
 };
 
 const PrescriptionsTab: React.FC<PrescriptionsTabProps> = ({ prescriptions: initialPrescriptions, patientName }) => {
   const [isAddPrescriptionDialogOpen, setIsAddPrescriptionDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [prescriptionToDelete, setPrescriptionToDelete] = useState<Prescription | null>(null);
-  const [prescriptions, setPrescriptions] = useState<Prescription[]>(initialPrescriptions);
+  const [prescriptionToDelete, setPrescriptionToDelete] = useState<PrescriptionInfo | null>(null);
+  const [prescriptions, setPrescriptions] = useState<PrescriptionInfo[]>(initialPrescriptions);
   
   const handleUploadPrescription = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Simuler l'ajout d'une nouvelle prescription
-    const newPrescription: Prescription = {
+    const newPrescription: PrescriptionInfo = {
       id: `pre-${Date.now()}`,
+      name: "Nouveau médicament",
+      dosage: "100mg",
+      frequency: "1 fois par jour",
+      startDate: new Date().toLocaleDateString('fr-FR'),
       title: "Nouvelle ordonnance",
       date: new Date().toLocaleDateString('fr-FR'),
       doctor: "Dr. Martin",
@@ -36,7 +40,7 @@ const PrescriptionsTab: React.FC<PrescriptionsTabProps> = ({ prescriptions: init
     setIsAddPrescriptionDialogOpen(false);
   };
   
-  const handleDeletePrescription = (prescription: Prescription) => {
+  const handleDeletePrescription = (prescription: PrescriptionInfo) => {
     setPrescriptionToDelete(prescription);
     setIsDeleteDialogOpen(true);
   };
@@ -49,7 +53,7 @@ const PrescriptionsTab: React.FC<PrescriptionsTabProps> = ({ prescriptions: init
     }
   };
   
-  const handleDownload = (prescription: Prescription) => {
+  const handleDownload = (prescription: PrescriptionInfo) => {
     try {
       // Créer un lien pour télécharger le fichier PDF
       const link = document.createElement('a');
@@ -59,7 +63,8 @@ const PrescriptionsTab: React.FC<PrescriptionsTabProps> = ({ prescriptions: init
       link.href = fileUrl;
       
       // Définir un nom de fichier basé sur le titre de la prescription
-      const fileName = `${prescription.title.replace(/\s+/g, '_').toLowerCase()}.pdf`;
+      const title = prescription.title || prescription.name;
+      const fileName = `${title.replace(/\s+/g, '_').toLowerCase()}.pdf`;
       link.setAttribute('download', fileName);
       
       // Ajouter le lien au document, cliquer dessus, puis le supprimer
@@ -67,7 +72,7 @@ const PrescriptionsTab: React.FC<PrescriptionsTabProps> = ({ prescriptions: init
       link.click();
       document.body.removeChild(link);
       
-      toast.success(`Téléchargement de l'ordonnance: ${prescription.title}`);
+      toast.success(`Téléchargement de l'ordonnance: ${title}`);
     } catch (error) {
       console.error("Erreur lors du téléchargement:", error);
       toast.error("Erreur lors du téléchargement de l'ordonnance");
@@ -94,9 +99,9 @@ const PrescriptionsTab: React.FC<PrescriptionsTabProps> = ({ prescriptions: init
             {prescriptions.map((prescription) => (
               <div key={prescription.id} className="flex justify-between items-center p-4 border rounded-md">
                 <div>
-                  <h3 className="font-medium">{prescription.title}</h3>
+                  <h3 className="font-medium">{prescription.title || prescription.name}</h3>
                   <div className="text-sm text-muted-foreground mt-1">
-                    <div>Date: {prescription.date}</div>
+                    <div>Date: {prescription.date || prescription.startDate}</div>
                     <div>Médecin: {prescription.doctor}</div>
                   </div>
                 </div>

@@ -61,9 +61,11 @@ export const CareSheetPDFService = {
         
         doc.setFontSize(10);
         prescriptions.forEach((prescription, index) => {
-          doc.text(`${index + 1}. ${prescription.title}`, 15, yPosition);
+          const prescriptionTitle = prescription.title || prescription.name;
+          doc.text(`${index + 1}. ${prescriptionTitle}`, 15, yPosition);
           yPosition += 5;
-          doc.text(`   Date: ${prescription.date} - Dr. ${prescription.doctor}`, 15, yPosition);
+          const prescriptionDate = prescription.date || prescription.startDate;
+          doc.text(`   Date: ${prescriptionDate} - Dr. ${prescription.doctor}`, 15, yPosition);
           yPosition += 8;
         });
       }

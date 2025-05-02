@@ -9,6 +9,7 @@ export interface CareInfo {
 
 export interface PrescriptionInfo {
   id: string;
+  title?: string;   // Make title optional but available
   name: string;
   dosage: string;
   frequency: string;
@@ -17,24 +18,14 @@ export interface PrescriptionInfo {
   doctor: string;
   notes?: string;
   scan?: string;
+  date?: string;    // Add date property for compatibility
+  file?: string;    // Add file property for compatibility
 }
 
 export interface InvoiceInfo {
   id: string;
   invoiceNumber?: string;
   date: string;
-  patient?: {
-    name?: string;
-    firstName?: string;
-    address?: string;
-  };
-  items?: {
-    description: string;
-    quantity: number;
-    unitPrice: number;
-    total: number;
-  }[];
-  patientId?: string;
   patientDetails?: {
     first_name?: string;
     last_name?: string;
@@ -47,6 +38,7 @@ export interface InvoiceInfo {
     email?: string;
     doctor?: string;
   };
+  patientId?: string;
   paid?: boolean;
   totalAmount?: number;
   majorations?: any[];

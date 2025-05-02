@@ -1,9 +1,9 @@
 
 import { toast } from "sonner";
-import { Prescription } from "@/services/PatientService";
+import { PrescriptionInfo } from "@/services/PDFTypes";
 
 // Données des ordonnances simulées
-const prescriptionsData: Record<string, Prescription[]> = {
+const prescriptionsData: Record<string, PrescriptionInfo[]> = {
   "p1": [
     {
       id: "pre-1",
@@ -50,14 +50,14 @@ export const PrescriptionsService = {
   /**
    * Récupère les ordonnances d'un patient
    */
-  getPrescriptions: (patientId: string): Prescription[] => {
+  getPrescriptions: (patientId: string): PrescriptionInfo[] => {
     return prescriptionsData[patientId] || [];
   },
   
   /**
    * Ajoute une ordonnance pour un patient
    */
-  addPrescription: (patientId: string, prescription: Omit<Prescription, 'id'>): string => {
+  addPrescription: (patientId: string, prescription: Omit<PrescriptionInfo, 'id'>): string => {
     if (!prescriptionsData[patientId]) {
       prescriptionsData[patientId] = [];
     }

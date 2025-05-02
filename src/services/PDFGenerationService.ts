@@ -96,13 +96,14 @@ export const PDFGenerationService = {
       doc.text("Date: " + (invoiceInfo.date || new Date().toLocaleDateString("fr-FR")), 20, 42);
       
       // Informations du patient
-      if (invoiceInfo.patient) {
+      if (invoiceInfo.patientDetails) {
         doc.setFontSize(14);
         doc.text("Patient", 20, 55);
         doc.setFontSize(12);
-        doc.text(`${invoiceInfo.patient.name || ""} ${invoiceInfo.patient.firstName || ""}`, 25, 65);
-        if (invoiceInfo.patient.address) {
-          doc.text(invoiceInfo.patient.address, 25, 72);
+        const fullName = `${invoiceInfo.patientDetails.first_name || ""} ${invoiceInfo.patientDetails.last_name || ""}`.trim();
+        doc.text(fullName, 25, 65);
+        if (invoiceInfo.patientDetails.address) {
+          doc.text(invoiceInfo.patientDetails.address, 25, 72);
         }
       }
       
@@ -124,21 +125,9 @@ export const PDFGenerationService = {
       let yPos = 115;
       let total = 0;
       
-      if (invoiceInfo.items && invoiceInfo.items.length > 0) {
-        invoiceInfo.items.forEach((item, index) => {
-          const itemTotal = item.quantity * item.unitPrice;
-          total += itemTotal;
-          
-          doc.text(item.description, 25, yPos);
-          doc.text(item.quantity.toString(), 120, yPos);
-          doc.text(item.unitPrice.toFixed(2) + " €", 140, yPos);
-          doc.text(itemTotal.toFixed(2) + " €", 175, yPos);
-          
-          yPos += 10;
-        });
-      } else if (invoiceInfo.details && invoiceInfo.details.length > 0) {
-        // Alternative implementation using details property
-        invoiceInfo.details.forEach((item, index) => {
+      if (invoiceInfo.details && invoiceInfo.details.length > 0) {
+        // Use details property
+        invoiceInfo.details.forEach((item) => {
           const itemTotal = item.total;
           total += itemTotal;
           
@@ -203,5 +192,5 @@ export const PDFGenerationService = {
   }
 };
 
-// Re-export the types to make them available to importing modules
-export { InvoiceInfo, CareInfo, PrescriptionInfo } from './PDFTypes';
+// Correctly re-export the types using 'export type'
+export type { CareInfo, InvoiceInfo, PrescriptionInfo } from './PDFTypes';
