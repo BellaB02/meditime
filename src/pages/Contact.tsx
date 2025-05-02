@@ -1,268 +1,205 @@
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { EmailService } from "@/services/EmailService";
-
-// Schéma de validation avec Zod
-const formSchema = z.object({
-  name: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères." }),
-  email: z.string().email({ message: "L'adresse email n'est pas valide." }),
-  phone: z.string().optional(),
-  subject: z.string().min(3, { message: "Le sujet doit contenir au moins 3 caractères." }),
-  message: z.string().min(10, { message: "Le message doit contenir au moins 10 caractères." }),
-  // Honeypot pour lutter contre le spam
-  website: z.string().max(0).optional()
-});
+import { toast } from "@/hooks/use-toast";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function Contact() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Initialisation du formulaire avec React Hook Form
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-      subject: "",
-      message: "",
-      website: ""
-    }
-  });
-  
-  // Fonction de soumission du formulaire
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const navigate = useNavigate();
+
+  // Champ caché honeypot pour prévenir le spam
+  const [honeypot, setHoneypot] = useState("");
+
+  const handleGoBack = () => {
+    navigate(-1);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     // Si le champ honeypot est rempli, c'est probablement un bot
-    if (values.website) {
-      // Simuler un succès mais ne rien faire
-      toast.success("Message envoyé");
-      form.reset();
+    if (honeypot) {
+      console.log("Spam détecté");
+      toast({
+        title: "Message envoyé",
+        description: "Nous vous répondrons dans les plus brefs délais.",
+      });
       return;
     }
     
     setIsSubmitting(true);
     
     try {
-      // Dans une application réelle, ceci appellerait une API ou un service
-      await EmailService.sendNotificationEmail(
-        "contact@meditimepro.com",
-        `Nouveau message de ${values.name}`,
-        `
-          Nom: ${values.name}
-          Email: ${values.email}
-          Téléphone: ${values.phone || "Non renseigné"}
-          Sujet: ${values.subject}
-          
-          Message:
-          ${values.message}
-        `
-      );
+      // Simuler l'envoi d'email (à remplacer par l'implémentation réelle avec Supabase)
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Envoyer un email de confirmation à l'utilisateur
-      await EmailService.sendNotificationEmail(
-        values.email,
-        "Confirmation de votre message - Meditime Pro",
-        `
-          Bonjour ${values.name},
-          
-          Nous avons bien reçu votre message et vous remercions de nous avoir contactés.
-          Notre équipe va étudier votre demande et vous répondra dans les plus brefs délais.
-          
-          Pour rappel, voici votre message :
-          
-          Sujet: ${values.subject}
-          Message: ${values.message}
-          
-          Cordialement,
-          L'équipe Meditime Pro
-        `
-      );
+      toast({
+        title: "Message envoyé",
+        description: "Nous vous répondrons dans les plus brefs délais.",
+      });
       
-      toast.success("Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.");
-      form.reset();
+      // Réinitialiser le formulaire
+      setName("");
+      setEmail("");
+      setSubject("");
+      setMessage("");
     } catch (error) {
-      console.error("Erreur lors de l'envoi du message:", error);
-      toast.error("Une erreur est survenue lors de l'envoi du message. Veuillez réessayer.");
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue. Veuillez réessayer.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
   
   return (
-    <div className="container mx-auto py-6 space-y-6 animate-fade-in">
-      <h1 className="text-2xl font-bold">Contactez-nous</h1>
-      <p className="text-muted-foreground">
-        Vous avez des questions ou des suggestions ? N'hésitez pas à nous contacter.
-        Notre équipe vous répondra dans les plus brefs délais.
-      </p>
+    <div className="container mx-auto py-6 animate-fade-in">
+      <div className="flex items-center gap-4 mb-6">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={handleGoBack}
+          aria-label="Retour à la page précédente"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <h1 className="text-2xl font-bold">Contact</h1>
+      </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Formulaire de contact</CardTitle>
-            <CardDescription>Envoyez-nous un message via ce formulaire</CardDescription>
+            <CardTitle>Nous contacter</CardTitle>
+            <CardDescription>
+              Remplissez le formulaire ci-dessous et nous vous répondrons dans les plus brefs délais.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nom complet</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Jean Dupont" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Honeypot field - invisible to users, used to detect bots */}
+              <div className="hidden">
+                <Input 
+                  type="text"
+                  name="website"
+                  value={honeypot}
+                  onChange={(e) => setHoneypot(e.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
                 />
-                
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Adresse email</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="jean.dupont@exemple.fr" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="name" className="text-sm font-medium">
+                  Nom
+                </label>
+                <Input
+                  id="name"
+                  placeholder="Votre nom"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
                 />
-                
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Téléphone <span className="text-muted-foreground">(optionnel)</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input placeholder="01 23 45 67 89" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium">
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Votre adresse email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
                 />
-                
-                <FormField
-                  control={form.control}
-                  name="subject"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Sujet</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Demande d'information" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="subject" className="text-sm font-medium">
+                  Sujet
+                </label>
+                <Input
+                  id="subject"
+                  placeholder="Sujet de votre message"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  required
                 />
-                
-                <FormField
-                  control={form.control}
-                  name="message"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Message</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Votre message..." 
-                          className="min-h-[120px]" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="message" className="text-sm font-medium">
+                  Message
+                </label>
+                <Textarea
+                  id="message"
+                  placeholder="Votre message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  rows={5}
+                  required
                 />
-                
-                {/* Champ honeypot caché pour éviter le spam */}
-                <div className="hidden" aria-hidden="true">
-                  <FormField
-                    control={form.control}
-                    name="website"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Website</FormLabel>
-                        <FormControl>
-                          <Input {...field} tabIndex={-1} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <Button 
-                  type="submit" 
-                  className="w-full"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Envoi en cours..." : "Envoyer le message"}
-                </Button>
-                
-                <p className="text-xs text-muted-foreground text-center">
-                  En soumettant ce formulaire, vous acceptez notre politique de confidentialité.
-                </p>
-              </form>
-            </Form>
+              </div>
+              
+              <Button type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting ? "Envoi en cours..." : "Envoyer le message"}
+              </Button>
+            </form>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader>
             <CardTitle>Nos coordonnées</CardTitle>
-            <CardDescription>Comment nous contacter directement</CardDescription>
+            <CardDescription>
+              Vous pouvez également nous contacter directement via les informations ci-dessous.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <h3 className="font-medium">Adresse</h3>
-              <p className="text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 123 Avenue de la Santé<br />
-                75000 Paris, France
+                75000 Paris<br />
+                France
               </p>
-            </div>
-            
-            <div>
-              <h3 className="font-medium">Email</h3>
-              <p className="text-muted-foreground">contact@meditimepro.com</p>
             </div>
             
             <div>
               <h3 className="font-medium">Téléphone</h3>
-              <p className="text-muted-foreground">+33 (0)1 23 45 67 89</p>
+              <p className="text-sm text-muted-foreground">+33 (0)1 23 45 67 89</p>
             </div>
             
             <div>
-              <h3 className="font-medium">Horaires d'assistance</h3>
-              <p className="text-muted-foreground">
-                Lundi au vendredi : 9h00 - 18h00<br />
-                Samedi : 9h00 - 12h00
-              </p>
+              <h3 className="font-medium">Email</h3>
+              <p className="text-sm text-muted-foreground">contact@meditimepro.com</p>
             </div>
             
-            <div className="pt-4">
-              <h3 className="font-medium">Une question fréquente ?</h3>
-              <p className="text-muted-foreground mb-2">
-                Consultez notre base de connaissances, votre réponse s'y trouve peut-être.
+            <div>
+              <h3 className="font-medium">Horaires</h3>
+              <p className="text-sm text-muted-foreground">
+                Du lundi au vendredi<br />
+                9h00 - 18h00
               </p>
-              <Button variant="outline" className="w-full">
-                Accéder à l'aide
-              </Button>
             </div>
           </CardContent>
+          <CardFooter>
+            <p className="text-sm text-muted-foreground">
+              Notre équipe de support est disponible pour vous aider avec toute question concernant nos services.
+            </p>
+          </CardFooter>
         </Card>
       </div>
     </div>

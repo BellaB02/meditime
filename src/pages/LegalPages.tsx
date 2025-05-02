@@ -2,15 +2,34 @@
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 export default function LegalPages() {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = React.useState("mentions-legales");
+  const navigate = useNavigate();
+  
+  // Fonction pour revenir à la page précédente
+  const handleGoBack = () => {
+    navigate(-1);
+  };
   
   return (
     <div className="container mx-auto py-6 space-y-6 animate-fade-in">
-      <h1 className="text-2xl font-bold mb-6">Informations légales</h1>
+      <div className="flex items-center gap-4 mb-4">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={handleGoBack}
+          aria-label="Retour à la page précédente"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <h1 className="text-2xl font-bold">Informations légales</h1>
+      </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className={`${isMobile ? "w-full grid grid-cols-3" : ""}`}>
