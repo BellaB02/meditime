@@ -136,6 +136,19 @@ export const PDFGenerationService = {
           
           yPos += 10;
         });
+      } else if (invoiceInfo.details && invoiceInfo.details.length > 0) {
+        // Alternative implementation using details property
+        invoiceInfo.details.forEach((item, index) => {
+          const itemTotal = item.total;
+          total += itemTotal;
+          
+          doc.text(item.description, 25, yPos);
+          doc.text(item.quantity.toString(), 120, yPos);
+          doc.text(item.unitPrice.toFixed(2) + " €", 140, yPos);
+          doc.text(itemTotal.toFixed(2) + " €", 175, yPos);
+          
+          yPos += 10;
+        });
       }
       
       // Ligne de séparation avant le total
@@ -145,7 +158,13 @@ export const PDFGenerationService = {
       // Total
       doc.setFontSize(14);
       doc.text("Total:", 140, yPos);
-      doc.text(total.toFixed(2) + " €", 175, yPos);
+      
+      // Use totalAmount if available, otherwise use calculated total
+      const finalTotal = invoiceInfo.totalAmount !== undefined 
+        ? invoiceInfo.totalAmount 
+        : (invoiceInfo.amount !== undefined ? invoiceInfo.amount : total);
+        
+      doc.text(finalTotal.toFixed(2) + " €", 175, yPos);
       
     } catch (error) {
       console.error("Erreur lors de la génération de la facture:", error);
@@ -172,17 +191,17 @@ export const PDFGenerationService = {
   /**
    * Prépare le PDF pour impression
    */
-  preparePDFForPrint: (doc: jsPDF): void => {
-    const pdfBlob = doc.output('blob');
-    const pdfUrl = URL.createObjectURL(pdfBlob);
-    const printWindow = window.open(pdfUrl, '_blank');
-    
-    if (printWindow) {
-      printWindow.onload = function() {
-        printWindow.print();
-      };
-    } else {
-      console.error("Impossible d'ouvrir la fenêtre d'impression");
+  preparePDFForPrint: (doc: jsPDF): string | null => {
+    try {
+      const pdfBlob = doc.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      return pdfUrl;
+    } catch (error) {
+      console.error("Impossible de préparer le PDF pour impression", error);
+      return null;
     }
   }
 };
+
+// Re-export the types to make them available to importing modules
+export { InvoiceInfo, CareInfo, PrescriptionInfo } from './PDFTypes';

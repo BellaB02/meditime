@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { PatientService, VitalSign } from "@/services/PatientService";
+import { DateFormatService } from "@/services/DateFormatService";
 
 // Schéma de validation du formulaire
 const vitalSignFormSchema = z.object({
@@ -58,8 +58,9 @@ const VitalSignsForm = ({ patientId, onSuccess }: VitalSignsFormProps) => {
     
     try {
       // Créer un nouvel enregistrement de signes vitaux
-      const newVitalSign: VitalSign = {
-        date: "Aujourd'hui",
+      const newVitalSign: Omit<VitalSign, 'id'> = {
+        date: DateFormatService.formatDate(new Date()),
+        time: DateFormatService.formatTime(),
         temperature: data.temperature,
         heartRate: data.heartRate,
         bloodPressure: data.bloodPressure,

@@ -9,18 +9,26 @@ export interface CareInfo {
 
 export interface PrescriptionInfo {
   id: string;
-  title: string;
-  date: string;
+  name: string;
+  dosage: string;
+  frequency: string;
+  startDate: string;
+  endDate?: string;
   doctor: string;
-  file?: string;
-  content?: string;
+  notes?: string;
+  scan?: string;
 }
 
 export interface InvoiceInfo {
   id: string;
+  invoiceNumber?: string;
   date: string;
-  amount: number;
-  details: {
+  patient?: {
+    name?: string;
+    firstName?: string;
+    address?: string;
+  };
+  items?: {
     description: string;
     quantity: number;
     unitPrice: number;
@@ -43,4 +51,11 @@ export interface InvoiceInfo {
   totalAmount?: number;
   majorations?: any[];
   careCode?: string;
+  details: {
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }[];
+  amount: number;
 }

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { PatientInfo, PatientService, Prescription } from "@/services/PatientService";
 import { Visit } from "@/components/patient/VisitsTab";
@@ -10,7 +9,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePatientsService } from "@/hooks/usePatientsService";
 import { 
-  VitalSign, 
+  VitalSign as SupabaseVitalSign, 
   Patient, 
   LegacyVitalSign, 
   convertToLegacyVitalSign 

@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 export interface PatientInfo {
@@ -39,6 +38,9 @@ export interface Prescription {
   doctor: string;
   notes?: string;
   scan?: string;
+  title: string;
+  date: string;
+  file?: string;
 }
 
 /**
@@ -230,7 +232,10 @@ export const PatientService = {
           startDate: "15/04/2025",
           endDate: "22/04/2025",
           doctor: "Dr. Martin",
-          notes: "À prendre pendant les repas"
+          notes: "À prendre pendant les repas",
+          title: "Paracétamol",
+          date: "15/04/2025",
+          file: "/documents/prescription1.pdf"
         },
         {
           id: "pr2",
@@ -240,7 +245,10 @@ export const PatientService = {
           startDate: "15/04/2025",
           endDate: "29/04/2025",
           doctor: "Dr. Martin",
-          notes: "Traitement antibiotique"
+          notes: "Traitement antibiotique",
+          title: "Amoxicilline",
+          date: "15/04/2025",
+          file: "/documents/prescription2.pdf"
         }
       ],
       "p2": [
@@ -251,7 +259,10 @@ export const PatientService = {
           frequency: "Avant chaque repas",
           startDate: "01/01/2025",
           doctor: "Dr. Durand",
-          notes: "Traitement au long cours"
+          notes: "Traitement au long cours",
+          title: "Insuline",
+          date: "01/01/2025",
+          file: "/documents/prescription3.pdf"
         }
       ],
       "p3": []

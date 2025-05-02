@@ -1,7 +1,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { billingService } from "@/integrations/supabase/services/billingService";
-import { PDFGenerationService, InvoiceInfo } from "./PDFGenerationService";
+import { PDFGenerationService } from "./PDFGenerationService";
+import { InvoiceInfo } from "./PDFTypes";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -41,6 +42,7 @@ export const BillingService = {
       // Préparer les détails pour la facture
       const invoiceInfo: InvoiceInfo = {
         id: recordId.substring(0, 8),
+        invoiceNumber: recordId.substring(0, 8),
         date: format(new Date(billingDetails.created_at), "dd/MM/yyyy"),
         amount: parseFloat(billingDetails.total_amount || 0),
         details: [
@@ -67,10 +69,6 @@ export const BillingService = {
       
       // Générer le PDF
       const pdfDoc = PDFGenerationService.generateInvoicePDF(invoiceInfo);
-      
-      if (!pdfDoc) {
-        throw new Error("Erreur lors de la génération du PDF");
-      }
       
       return { pdfDoc, patientName };
     } catch (error) {
@@ -102,18 +100,18 @@ export const BillingService = {
       const { pdfDoc, patientName } = await BillingService.generateInvoicePDF(recordId);
       const pdfUrl = PDFGenerationService.preparePDFForPrint(pdfDoc);
       
-      if (!pdfUrl) {
-        throw new Error("Erreur lors de la préparation du PDF pour impression");
-      }
-      
-      const printWindow = window.open(pdfUrl, "_blank");
-      if (printWindow) {
-        printWindow.onload = () => {
-          printWindow.print();
-        };
-        toast.success(`Impression de la facture pour ${patientName}`);
+      if (pdfUrl) {
+        const printWindow = window.open(pdfUrl, "_blank");
+        if (printWindow) {
+          printWindow.onload = () => {
+            printWindow.print();
+          };
+          toast.success(`Impression de la facture pour ${patientName}`);
+        } else {
+          toast.error("Impossible d'ouvrir la fenêtre d'impression");
+        }
       } else {
-        toast.error("Impossible d'ouvrir la fenêtre d'impression");
+        toast.error("Impossible de préparer le PDF pour impression");
       }
     } catch (error) {
       console.error("BillingService: Erreur lors de l'impression de la facture", error);

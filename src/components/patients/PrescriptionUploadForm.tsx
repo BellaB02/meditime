@@ -28,6 +28,15 @@ const prescriptionFormSchema = z.object({
   date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, {
     message: "Format de date invalide (ex: 15/04/2025)"
   }),
+  name: z.string().min(2, {
+    message: "Le nom du médicament doit contenir au moins 2 caractères"
+  }),
+  dosage: z.string().min(2, {
+    message: "Le dosage doit contenir au moins 2 caractères"
+  }),
+  frequency: z.string().min(2, {
+    message: "La fréquence doit contenir au moins 2 caractères"
+  }),
   file: z.instanceof(File, {
     message: "Veuillez sélectionner un fichier PDF"
   }).refine((file) => file.size <= 5 * 1024 * 1024, {
@@ -64,6 +73,9 @@ const PrescriptionUploadForm = ({ patientId, onSuccess }: PrescriptionUploadForm
       title: "",
       doctor: "",
       date: getCurrentDate(),
+      name: "",
+      dosage: "",
+      frequency: ""
     },
   });
   
@@ -91,6 +103,10 @@ const PrescriptionUploadForm = ({ patientId, onSuccess }: PrescriptionUploadForm
         doctor: data.doctor,
         date: data.date,
         file: fileUrl,
+        name: data.name,
+        dosage: data.dosage,
+        frequency: data.frequency,
+        startDate: data.date,
       };
       
       // Ajouter l'ordonnance au service
@@ -101,6 +117,9 @@ const PrescriptionUploadForm = ({ patientId, onSuccess }: PrescriptionUploadForm
         title: "",
         doctor: "",
         date: getCurrentDate(),
+        name: "",
+        dosage: "",
+        frequency: ""
       });
       setSelectedFile(null);
       
@@ -156,6 +175,50 @@ const PrescriptionUploadForm = ({ patientId, onSuccess }: PrescriptionUploadForm
                 <FormLabel>Date de l'ordonnance</FormLabel>
                 <FormControl>
                   <Input placeholder="JJ/MM/AAAA" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nom du médicament</FormLabel>
+                <FormControl>
+                  <Input placeholder="Ex: Paracétamol" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="dosage"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Dosage</FormLabel>
+                <FormControl>
+                  <Input placeholder="Ex: 1000mg" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="frequency"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Fréquence</FormLabel>
+                <FormControl>
+                  <Input placeholder="Ex: 3 fois par jour" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

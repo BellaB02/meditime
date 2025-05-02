@@ -1,13 +1,6 @@
 
 import { toast } from "sonner";
-
-export interface Prescription {
-  id: string;
-  title: string;
-  date: string;
-  doctor: string;
-  file: string;
-}
+import { Prescription } from "@/services/PatientService";
 
 // Données des ordonnances simulées
 const prescriptionsData: Record<string, Prescription[]> = {
@@ -17,7 +10,12 @@ const prescriptionsData: Record<string, Prescription[]> = {
       title: "Ordonnance de renouvellement",
       date: "15/04/2025",
       doctor: "Dr. Martin",
-      file: "/documents/ordonnance_p1.pdf"
+      file: "/documents/ordonnance_p1.pdf",
+      name: "Paracétamol",
+      dosage: "1000mg",
+      frequency: "3 fois par jour",
+      startDate: "15/04/2025",
+      endDate: "22/04/2025"
     }
   ],
   "p2": [
@@ -26,7 +24,11 @@ const prescriptionsData: Record<string, Prescription[]> = {
       title: "Prescription cardiaque",
       date: "10/04/2025",
       doctor: "Dr. Dubois",
-      file: "/documents/ordonnance_p2.pdf"
+      file: "/documents/ordonnance_p2.pdf",
+      name: "Aténolol",
+      dosage: "50mg",
+      frequency: "1 fois par jour",
+      startDate: "10/04/2025"
     }
   ],
   "p3": [
@@ -35,7 +37,11 @@ const prescriptionsData: Record<string, Prescription[]> = {
       title: "Traitement diabète",
       date: "05/04/2025",
       doctor: "Dr. Leroy",
-      file: "/documents/ordonnance_p3.pdf"
+      file: "/documents/ordonnance_p3.pdf",
+      name: "Insuline",
+      dosage: "10 unités",
+      frequency: "Avant chaque repas",
+      startDate: "05/04/2025"
     }
   ]
 };
