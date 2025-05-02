@@ -59,6 +59,32 @@ export function usePatientsService() {
     });
   };
   
+  // Fonction pour rechercher un patient par numéro de sécurité sociale
+  const usePatientBySocialSecurityNumber = (socialSecurityNumber: string) => {
+    return useQuery({
+      queryKey: ['patient', 'ssn', socialSecurityNumber],
+      queryFn: () => patientsService.getPatientBySocialSecurityNumber(socialSecurityNumber),
+      enabled: !!socialSecurityNumber && socialSecurityNumber.length >= 13,
+    });
+  };
+  
+  // Lier un compte utilisateur à un patient existant
+  const useLinkPatientToUser = () => {
+    return useMutation({
+      mutationFn: ({ patientId, userId }: { patientId: string, userId: string }) => 
+        patientsService.linkPatientToUser(patientId, userId),
+      onSuccess: (_, variables) => {
+        queryClient.invalidateQueries({ queryKey: ['patients'] });
+        queryClient.invalidateQueries({ queryKey: ['patient', variables.patientId] });
+        toast.success("Compte utilisateur lié au dossier patient avec succès");
+      },
+      onError: (error: any) => {
+        toast.error("Erreur lors de la liaison du compte utilisateur au dossier patient");
+        console.error("Error linking patient to user:", error);
+      }
+    });
+  };
+  
   // Vital Signs Queries
   const usePatientVitalSigns = (patientId: string) => {
     return useQuery({
@@ -140,6 +166,8 @@ export function usePatientsService() {
     usePatient,
     useCreatePatient,
     useUpdatePatient,
+    usePatientBySocialSecurityNumber,
+    useLinkPatientToUser,
     usePatientVitalSigns,
     useAddVitalSign,
     usePatientDocuments,

@@ -1,3 +1,4 @@
+
 import { supabase } from '../client';
 import { Patient, VitalSign, CareDocument } from './types';
 
@@ -33,11 +34,52 @@ export const patientsService = {
     return data as Patient;
   },
   
+  // Rechercher un patient par numéro de sécurité sociale
+  getPatientBySocialSecurityNumber: async (socialSecurityNumber: string): Promise<Patient | null> => {
+    // Normaliser le numéro de sécurité sociale (enlever les espaces)
+    const normalizedSSN = socialSecurityNumber.replace(/\s/g, '');
+    
+    const { data, error } = await supabase
+      .from('patients')
+      .select('*')
+      .eq('social_security_number', socialSecurityNumber)
+      .maybeSingle();
+      
+    if (error) {
+      console.error(`Error fetching patient by SSN:`, error);
+      throw error;
+    }
+    
+    return data as Patient;
+  },
+  
+  // Lier un patient à un compte utilisateur
+  linkPatientToUser: async (patientId: string, userId: string): Promise<Patient> => {
+    const { data, error } = await supabase
+      .from('patients')
+      .update({ user_id: userId })
+      .eq('id', patientId)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error(`Error linking patient to user:`, error);
+      throw error;
+    }
+    
+    return data as Patient;
+  },
+  
   // Créer un nouveau patient
   createPatient: async (patient: Omit<Patient, 'id' | 'created_at' | 'updated_at'>): Promise<Patient> => {
     // Vérifions que les champs requis sont présents
     if (!patient.first_name || !patient.last_name) {
       throw new Error('Missing required patient fields: first_name or last_name');
+    }
+    
+    // Normaliser le numéro de sécurité sociale si présent
+    if (patient.social_security_number) {
+      patient.social_security_number = patient.social_security_number.replace(/\s/g, '');
     }
     
     const { data, error } = await supabase
@@ -71,6 +113,11 @@ export const patientsService = {
   
   // Mettre à jour un patient existant
   updatePatient: async (patientId: string, patient: Partial<Patient>): Promise<Patient> => {
+    // Normaliser le numéro de sécurité sociale si présent
+    if (patient.social_security_number) {
+      patient.social_security_number = patient.social_security_number.replace(/\s/g, '');
+    }
+    
     const { data, error } = await supabase
       .from('patients')
       .update(patient)

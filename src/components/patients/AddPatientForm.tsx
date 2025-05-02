@@ -26,6 +26,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PatientService } from "@/services/PatientService";
 
 // Schéma de validation du formulaire
 const patientFormSchema = z.object({
@@ -47,9 +48,9 @@ const patientFormSchema = z.object({
   email: z.string().email({
     message: "Veuillez entrer une adresse email valide"
   }).optional().or(z.literal("")),
-  socialSecurityNumber: z.string().min(15, {
-    message: "Le numéro de sécurité sociale doit contenir 15 chiffres"
-  }).regex(/^\d[\s\d]{13}\d$/, {
+  socialSecurityNumber: z.string().min(13, {
+    message: "Le numéro de sécurité sociale doit contenir au moins 13 caractères"
+  }).refine((val) => /^[1-2]\s?\d{2}\s?\d{2}\s?\d{2}\s?\d{3}\s?\d{3}\s?\d{2}$/.test(val.replace(/\s/g, '')), {
     message: "Format invalide (ex: 1 95 05 75 123 456 78)"
   }),
   doctor: z.string().optional(),
@@ -85,11 +86,22 @@ const AddPatientForm = ({ onSuccess }: AddPatientFormProps) => {
     setIsSubmitting(true);
     
     try {
-      // Ici, nous pourrions envoyer les données à une API
-      console.log("Données du patient:", data);
+      // Conversion de la date au format attendu
+      const dateOfBirth = format(data.birthDate, "dd/MM/yyyy");
       
-      // Simuler un délai d'enregistrement
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Créer le patient dans la base de données
+      const patientId = await PatientService.addPatient({
+        name: data.name,
+        firstName: data.firstName,
+        address: data.address,
+        phoneNumber: data.phone,
+        socialSecurityNumber: data.socialSecurityNumber,
+        dateOfBirth,
+        email: data.email || undefined,
+        doctor: data.doctor || undefined,
+        medicalNotes: data.medicalNotes || undefined,
+        status: "active"
+      });
       
       // Afficher un message de succès
       toast.success(`Patient ${data.firstName} ${data.name} ajouté avec succès`);
@@ -173,6 +185,7 @@ const AddPatientForm = ({ onSuccess }: AddPatientFormProps) => {
                         date > new Date() || date < new Date("1900-01-01")
                       }
                       initialFocus
+                      className={cn("p-3 pointer-events-auto")}
                     />
                   </PopoverContent>
                 </Popover>
