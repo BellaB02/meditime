@@ -1,193 +1,188 @@
 
 import { jsPDF } from "jspdf";
-import { toast } from "sonner";
-import { DateFormatService } from "./DateFormatService";
-import { PatientService } from './PatientService';
-
-// Types pour les informations nécessaires à la génération des PDF
-export interface CareInfo {
-  type: string;
-  date: string;
-  time: string;
-  code?: string;
-  description?: string;
-}
-
-export interface PrescriptionInfo {
-  title: string;
-  date: string;
-  doctor: string;
-}
-
-export interface InvoiceInfo {
-  invoiceNumber: string;
-  date: string;
-  patientName: string;
-  acts: Array<{
-    code: string;
-    description: string;
-    quantity: number;
-    unitPrice: number;
-  }>;
-  totalAmount: number;
-}
+import { PatientInfo, PatientService } from "./PatientService";
+import { CareInfo, InvoiceInfo, PrescriptionInfo } from "./PDFTypes";
 
 /**
- * Service pour la génération de PDF
+ * Service pour la génération de PDFs
  */
 export const PDFGenerationService = {
   /**
-   * Génère un PDF pré-rempli avec les informations patient et soins
+   * Génère un PDF pré-rempli pour une feuille de soins
    */
-  generatePrefilledPDF: async (patientId?: string, careInfo?: CareInfo, prescriptions?: PrescriptionInfo[]): Promise<jsPDF | null> => {
+  generatePrefilledPDF: async (
+    patientId?: string, 
+    careInfo?: CareInfo,
+    prescriptions?: PrescriptionInfo[]
+  ): Promise<jsPDF> => {
+    const doc = new jsPDF();
+    
     try {
-      // Créer un nouveau document PDF
-      const doc = new jsPDF();
-      
-      // En-tête
-      doc.setFontSize(18);
-      doc.text("FEUILLE DE SOINS", 105, 15, { align: "center" });
-      
-      // Informations patient
-      let patientInfo = null;
+      // Récupérer les informations du patient si un ID est fourni
+      let patientInfo: PatientInfo | null = null;
       if (patientId) {
-        try {
-          patientInfo = await PatientService.getPatientInfo(patientId);
-        } catch (error) {
-          console.warn("Impossible de récupérer les informations patient:", error);
-          // Continue sans les informations patient
-        }
+        patientInfo = await PatientService.getPatientInfo(patientId);
       }
       
-      doc.setFontSize(12);
-      doc.text("INFORMATIONS PATIENT", 15, 30);
-      doc.setFontSize(10);
+      // Ajouter l'en-tête
+      doc.setFontSize(22);
+      doc.text("Feuille de Soins", 105, 20, { align: "center" });
       
+      doc.setFontSize(12);
+      doc.text("Date: " + (careInfo?.date || new Date().toLocaleDateString("fr-FR")), 20, 35);
+      
+      // Informations du patient
       if (patientInfo) {
-        const fullName = `${patientInfo.firstName || ""} ${patientInfo.name}`.trim();
-        doc.text(`Nom et Prénom: ${fullName}`, 15, 40);
-        doc.text(`Adresse: ${patientInfo.address || "Non renseignée"}`, 15, 47);
-        doc.text(`N° Sécurité Sociale: ${patientInfo.socialSecurityNumber || "Non renseigné"}`, 15, 54);
-        doc.text(`Date de naissance: ${patientInfo.dateOfBirth || "Non renseignée"}`, 15, 61);
-        doc.text(`Téléphone: ${patientInfo.phoneNumber || "Non renseigné"}`, 15, 68);
-        doc.text(`Email: ${patientInfo.email || "Non renseigné"}`, 15, 75);
-        doc.text(`Médecin traitant: ${patientInfo.doctor || "Non renseigné"}`, 15, 82);
-      } else {
-        doc.text("Nom et Prénom: ________________________________", 15, 40);
-        doc.text("Adresse: ________________________________", 15, 47);
-        doc.text("N° Sécurité Sociale: ________________________________", 15, 54);
-        doc.text("Date de naissance: ________________________________", 15, 61);
-        doc.text("Téléphone: ________________________________", 15, 68);
-        doc.text("Email: ________________________________", 15, 75);
-        doc.text("Médecin traitant: ________________________________", 15, 82);
+        doc.setFontSize(14);
+        doc.text("Informations du patient", 20, 50);
+        doc.setFontSize(12);
+        doc.text(`Nom: ${patientInfo.name || ""}`, 25, 60);
+        doc.text(`Prénom: ${patientInfo.firstName || ""}`, 25, 67);
+        doc.text(`Date de naissance: ${patientInfo.dateOfBirth || ""}`, 25, 74);
+        doc.text(`Numéro de sécurité sociale: ${patientInfo.socialSecurityNumber || ""}`, 25, 81);
+        doc.text(`Adresse: ${patientInfo.address || ""}`, 25, 88);
       }
       
-      // Informations du soin
-      doc.setFontSize(12);
-      doc.text("INFORMATIONS DU SOIN", 15, 95);
-      doc.setFontSize(10);
-      doc.text(`Type de soin: ${careInfo?.type || "________________________________"}`, 15, 105);
-      doc.text(`Code NGAP: ${careInfo?.code || "________________________________"}`, 15, 112);
-      doc.text(`Date: ${careInfo?.date || DateFormatService.formatCurrentDate()}`, 15, 119);
-      doc.text(`Heure: ${careInfo?.time || DateFormatService.formatTime()}`, 15, 126);
-      doc.text(`Description: ${careInfo?.description || "________________________________"}`, 15, 133);
-      
-      // Ordonnances associées
-      if (prescriptions && prescriptions.length > 0) {
-        let yPosition = 150;
-        
+      // Informations de soins
+      if (careInfo) {
+        doc.setFontSize(14);
+        doc.text("Acte de soins", 20, 105);
         doc.setFontSize(12);
-        doc.text("ORDONNANCES ASSOCIÉES", 15, yPosition);
-        yPosition += 8;
+        doc.text(`Type: ${careInfo.type || ""}`, 25, 115);
+        doc.text(`Code NGAP: ${careInfo.code || ""}`, 25, 122);
+        doc.text(`Description: ${careInfo.description || ""}`, 25, 129);
+        doc.text(`Date: ${careInfo.date || ""}`, 25, 136);
+        doc.text(`Heure: ${careInfo.time || ""}`, 25, 143);
+      }
+      
+      // Prescriptions si fournies
+      if (prescriptions && prescriptions.length > 0) {
+        doc.setFontSize(14);
+        doc.text("Prescriptions", 20, 160);
+        doc.setFontSize(12);
         
-        doc.setFontSize(10);
         prescriptions.forEach((prescription, index) => {
-          doc.text(`${index + 1}. ${prescription.title}`, 15, yPosition);
-          yPosition += 5;
-          doc.text(`   Date: ${prescription.date} - Dr. ${prescription.doctor}`, 15, yPosition);
-          yPosition += 8;
+          const yPos = 170 + index * 20;
+          doc.text(`- ${prescription.name}: ${prescription.dosage} (${prescription.frequency})`, 25, yPos);
         });
       }
       
-      // Signature
-      doc.setFontSize(12);
-      doc.text("SIGNATURE DU PRATICIEN", 15, 220);
-      doc.line(15, 235, 80, 235);
+      // Zone de signature
+      doc.setFontSize(14);
+      doc.text("Signature du praticien", 20, 240);
+      doc.rect(25, 245, 60, 30);
       
-      return doc;
     } catch (error) {
       console.error("Erreur lors de la génération du PDF:", error);
-      toast.error("Erreur lors de la génération du PDF");
-      return null;
+      // Continuer avec un PDF minimal en cas d'erreur
     }
+    
+    return doc;
   },
   
   /**
-   * Génère une facture en PDF
+   * Génère un PDF de facture
    */
-  generateInvoicePDF: (invoiceInfo: InvoiceInfo): jsPDF | null => {
+  generateInvoicePDF: (invoiceInfo: InvoiceInfo): jsPDF => {
+    const doc = new jsPDF();
+    
     try {
-      // Créer un nouveau document PDF
-      const doc = new jsPDF();
+      // Ajouter l'en-tête
+      doc.setFontSize(22);
+      doc.text("Facture", 105, 20, { align: "center" });
       
-      // En-tête
-      doc.setFontSize(18);
-      doc.text("FACTURE", 105, 15, { align: "center" });
-      
-      // Informations facture
       doc.setFontSize(12);
-      doc.text("INFORMATIONS FACTURE", 15, 30);
-      doc.setFontSize(10);
-      doc.text(`N° Facture: ${invoiceInfo.invoiceNumber}`, 15, 40);
-      doc.text(`Date: ${invoiceInfo.date}`, 15, 47);
-      doc.text(`Patient: ${invoiceInfo.patientName}`, 15, 54);
+      doc.text("Numéro de facture: " + (invoiceInfo.invoiceNumber || ""), 20, 35);
+      doc.text("Date: " + (invoiceInfo.date || new Date().toLocaleDateString("fr-FR")), 20, 42);
       
-      // Tableau des actes
-      let yPosition = 70;
+      // Informations du patient
+      if (invoiceInfo.patient) {
+        doc.setFontSize(14);
+        doc.text("Patient", 20, 55);
+        doc.setFontSize(12);
+        doc.text(`${invoiceInfo.patient.name || ""} ${invoiceInfo.patient.firstName || ""}`, 25, 65);
+        if (invoiceInfo.patient.address) {
+          doc.text(invoiceInfo.patient.address, 25, 72);
+        }
+      }
+      
+      // Détails de la facture
+      doc.setFontSize(14);
+      doc.text("Détails", 20, 90);
       doc.setFontSize(12);
-      doc.text("DÉTAIL DES ACTES", 15, yPosition);
-      yPosition += 10;
       
       // En-têtes du tableau
-      doc.setFontSize(10);
-      doc.text("Code", 15, yPosition);
-      doc.text("Description", 45, yPosition);
-      doc.text("Quantité", 120, yPosition);
-      doc.text("Prix unitaire", 150, yPosition);
-      doc.text("Total", 180, yPosition);
+      doc.text("Description", 25, 100);
+      doc.text("Qté", 120, 100);
+      doc.text("Prix unitaire", 140, 100);
+      doc.text("Total", 175, 100);
       
-      yPosition += 7;
-      doc.line(15, yPosition - 5, 195, yPosition - 5); // Ligne après les en-têtes
+      // Ligne de séparation
+      doc.line(20, 105, 190, 105);
       
-      // Lignes du tableau
-      invoiceInfo.acts.forEach(act => {
-        doc.text(act.code, 15, yPosition);
-        doc.text(act.description, 45, yPosition);
-        doc.text(act.quantity.toString(), 125, yPosition);
-        doc.text(`${act.unitPrice.toFixed(2)} €`, 155, yPosition);
-        doc.text(`${(act.quantity * act.unitPrice).toFixed(2)} €`, 180, yPosition);
-        yPosition += 7;
-      });
+      // Contenu du tableau
+      let yPos = 115;
+      let total = 0;
+      
+      if (invoiceInfo.items && invoiceInfo.items.length > 0) {
+        invoiceInfo.items.forEach((item, index) => {
+          const itemTotal = item.quantity * item.unitPrice;
+          total += itemTotal;
+          
+          doc.text(item.description, 25, yPos);
+          doc.text(item.quantity.toString(), 120, yPos);
+          doc.text(item.unitPrice.toFixed(2) + " €", 140, yPos);
+          doc.text(itemTotal.toFixed(2) + " €", 175, yPos);
+          
+          yPos += 10;
+        });
+      }
+      
+      // Ligne de séparation avant le total
+      doc.line(20, yPos, 190, yPos);
+      yPos += 10;
       
       // Total
-      yPosition += 5;
-      doc.line(15, yPosition - 5, 195, yPosition - 5);
-      doc.setFontSize(11);
-      doc.text("Total:", 150, yPosition);
-      doc.text(`${invoiceInfo.totalAmount.toFixed(2)} €`, 180, yPosition);
+      doc.setFontSize(14);
+      doc.text("Total:", 140, yPos);
+      doc.text(total.toFixed(2) + " €", 175, yPos);
       
-      return doc;
     } catch (error) {
       console.error("Erreur lors de la génération de la facture:", error);
-      toast.error("Erreur lors de la génération de la facture");
-      return null;
+      // Continuer avec un PDF minimal en cas d'erreur
     }
+    
+    return doc;
   },
   
   /**
-   * Sauvegarde un document PDF
+   * Sauvegarde le PDF avec un nom de fichier spécifique
    */
   savePDF: (doc: jsPDF, fileName: string): void => {
     doc.save(fileName);
+  },
+
+  /**
+   * Sauvegarde le PDF de facture
+   */
+  saveInvoicePDF: (doc: jsPDF, invoiceNumber: string): void => {
+    doc.save(`facture_${invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`);
+  },
+  
+  /**
+   * Prépare le PDF pour impression
+   */
+  preparePDFForPrint: (doc: jsPDF): void => {
+    const pdfBlob = doc.output('blob');
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    const printWindow = window.open(pdfUrl, '_blank');
+    
+    if (printWindow) {
+      printWindow.onload = function() {
+        printWindow.print();
+      };
+    } else {
+      console.error("Impossible d'ouvrir la fenêtre d'impression");
+    }
   }
 };

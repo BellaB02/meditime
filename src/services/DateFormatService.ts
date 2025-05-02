@@ -25,5 +25,12 @@ export const DateFormatService = {
    */
   formatDateTime: (date: Date): string => {
     return format(date, "dd/MM/yyyy à HH:mm", { locale: fr });
+  },
+  
+  /**
+   * Formate une date au format français (JJ/MM/AAAA)
+   */
+  formatDate: (date: Date): string => {
+    return format(date, "dd/MM/yyyy", { locale: fr });
   }
 };
