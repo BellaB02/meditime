@@ -14,7 +14,7 @@ interface CareSheetListProps {
 }
 
 export const CareSheetList: React.FC<CareSheetListProps> = ({ careSheets }) => {
-  const handleDownload = (careSheet: Document) => {
+  const handleDownload = async (careSheet: Document) => {
     try {
       // Préparer les informations de soin
       const careInfo = {
@@ -25,8 +25,8 @@ export const CareSheetList: React.FC<CareSheetListProps> = ({ careSheets }) => {
         description: careSheet.careInfo?.description || ""
       };
 
-      // Générer le PDF
-      const doc = PDFGenerationService.generatePrefilledPDF(careSheet.patientId, careInfo);
+      // Générer le PDF (maintenant avec await car la fonction est asynchrone)
+      const doc = await PDFGenerationService.generatePrefilledPDF(careSheet.patientId, careInfo);
       
       if (doc) {
         // Télécharger le PDF

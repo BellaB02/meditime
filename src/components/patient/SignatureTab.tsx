@@ -96,10 +96,10 @@ const SignatureTab: React.FC<SignatureTabProps> = ({ patientId, patientName }) =
     setSignatureDataUrl(null);
   };
 
-  const handleDownload = (document: SignedDocument) => {
+  const handleDownload = async (document: SignedDocument) => {
     try {
       // Utiliser PDFGenerationService pour générer le PDF avec signature
-      const doc = PDFGenerationService.generatePrefilledPDF(
+      const doc = await PDFGenerationService.generatePrefilledPDF(
         patientId,
         { 
           type: document.type,

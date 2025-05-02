@@ -26,9 +26,9 @@ const CareSheetsTab: React.FC<CareSheetsTabProps> = ({ patientId }) => {
     }
   ];
   
-  const handleDownload = (sheetId: string) => {
+  const handleDownload = async (sheetId: string) => {
     try {
-      DocumentService.downloadDocument('feuille_de_soins', patientId, {
+      await DocumentService.downloadDocument('feuille_de_soins', patientId, {
         type: "Soin courant",
         date: new Date().toLocaleDateString('fr-FR')
       }, true);
@@ -40,9 +40,9 @@ const CareSheetsTab: React.FC<CareSheetsTabProps> = ({ patientId }) => {
     }
   };
   
-  const handlePrint = (sheetId: string) => {
+  const handlePrint = async (sheetId: string) => {
     try {
-      DocumentService.printDocument('feuille_de_soins', patientId, {
+      await DocumentService.printDocument('feuille_de_soins', patientId, {
         type: "Soin courant",
         date: new Date().toLocaleDateString('fr-FR')
       }, true);
