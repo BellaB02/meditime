@@ -30,6 +30,8 @@ import Practice from "./pages/Practice";
 import Auth from "./pages/Auth";
 import PatientPortal from "./pages/PatientPortal";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import LegalPages from "./pages/LegalPages";
+import Contact from "./pages/Contact";
 
 // Create a new Query Client
 const queryClient = new QueryClient({
@@ -92,6 +94,8 @@ function App() {
                   <Routes>
                     {/* Public routes */}
                     <Route path="/auth" element={<Auth />} />
+                    <Route path="/mentions-legales" element={<LegalPages />} />
+                    <Route path="/contact" element={<Contact />} />
                     
                     {/* Protected routes */}
                     <Route element={<ProtectedRoute />}>
