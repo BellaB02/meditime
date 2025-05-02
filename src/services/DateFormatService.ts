@@ -2,34 +2,28 @@
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
+/**
+ * Service pour le formatage des dates
+ */
 export const DateFormatService = {
   /**
-   * Formate la date actuelle au format français
+   * Formate la date actuelle au format français (JJ/MM/AAAA)
    */
   formatCurrentDate: (): string => {
-    const now = new Date();
-    return format(now, "dd/MM/yyyy", { locale: fr });
+    return format(new Date(), "dd/MM/yyyy", { locale: fr });
   },
   
   /**
-   * Formate une date donnée au format français
+   * Formate l'heure actuelle (HH:MM)
    */
-  formatDate: (date: Date): string => {
-    return format(date, "dd/MM/yyyy", { locale: fr });
+  formatTime: (): string => {
+    return format(new Date(), "HH:mm", { locale: fr });
   },
   
   /**
-   * Formate une heure donnée
+   * Formate une date complète avec l'heure
    */
-  formatTime: (date?: Date): string => {
-    const dateToFormat = date || new Date();
-    return format(dateToFormat, "HH:mm");
-  },
-  
-  /**
-   * Formate une date pour les noms de fichiers
-   */
-  formatDateForFilename: (): string => {
-    return format(new Date(), "dd-MM-yyyy");
+  formatDateTime: (date: Date): string => {
+    return format(date, "dd/MM/yyyy à HH:mm", { locale: fr });
   }
 };

@@ -2,7 +2,7 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Document } from "@/services/DocumentService";
@@ -25,12 +25,16 @@ export const CareSheetList: React.FC<CareSheetListProps> = ({ careSheets }) => {
         description: careSheet.careInfo?.description || ""
       };
 
-      // Générer le PDF (maintenant avec await car la fonction est asynchrone)
-      const doc = await PDFGenerationService.generatePrefilledPDF(careSheet.patientId, careInfo);
+      // Générer le PDF
+      const doc = await PDFGenerationService.generatePrefilledPDF(
+        careSheet.patientId, 
+        careInfo
+      );
       
       if (doc) {
         // Télécharger le PDF
-        PDFGenerationService.savePDF(doc, careSheet.patientId || "patient");
+        const fileName = `feuille_de_soins_${careSheet.patientName?.replace(/\s/g, '_')}_${format(new Date(), 'yyyyMMdd')}.pdf`;
+        doc.save(fileName);
         toast.success("Feuille de soins téléchargée avec succès");
       } else {
         toast.error("Erreur lors de la génération de la feuille de soins");
@@ -38,6 +42,35 @@ export const CareSheetList: React.FC<CareSheetListProps> = ({ careSheets }) => {
     } catch (error) {
       console.error("Erreur lors du téléchargement:", error);
       toast.error("Erreur lors du téléchargement");
+    }
+  };
+
+  const handlePreview = async (careSheet: Document) => {
+    try {
+      const careInfo = {
+        type: careSheet.careInfo?.type || "",
+        date: careSheet.careInfo?.date || format(new Date(), "dd/MM/yyyy"),
+        time: format(new Date(), "HH:mm"),
+        code: careSheet.careInfo?.code || "",
+        description: careSheet.careInfo?.description || ""
+      };
+
+      const doc = await PDFGenerationService.generatePrefilledPDF(
+        careSheet.patientId, 
+        careInfo
+      );
+      
+      if (doc) {
+        // Ouvrir le PDF dans un nouvel onglet
+        const pdfBlob = doc.output('blob');
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        window.open(pdfUrl, '_blank');
+      } else {
+        toast.error("Erreur lors de la génération de l'aperçu");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la génération de l'aperçu:", error);
+      toast.error("Erreur lors de la génération de l'aperçu");
     }
   };
 
@@ -56,10 +89,16 @@ export const CareSheetList: React.FC<CareSheetListProps> = ({ careSheets }) => {
                     <div>Type de soin: {sheet.careInfo?.type} ({sheet.careInfo?.code})</div>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => handleDownload(sheet)}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Télécharger
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => handlePreview(sheet)}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Aperçu
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDownload(sheet)}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Télécharger
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

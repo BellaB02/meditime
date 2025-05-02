@@ -1,11 +1,15 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, Calendar } from "lucide-react";
+import { Download, FileText, Calendar, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { StaticDocumentService } from "@/services/StaticDocumentService";
 
 export const UsefulDocumentsCard = () => {
+  const handleDownloadDocument = (documentType: string) => {
+    StaticDocumentService.downloadStaticDocument(documentType);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -28,7 +32,7 @@ export const UsefulDocumentsCard = () => {
                 variant="outline" 
                 size="sm" 
                 className="w-full"
-                onClick={() => StaticDocumentService.downloadStaticDocument("feuille_de_soins")}
+                onClick={() => handleDownloadDocument("feuille_de_soins")}
               >
                 <Download className="mr-2 h-4 w-4" />
                 Télécharger
@@ -36,6 +40,29 @@ export const UsefulDocumentsCard = () => {
             </div>
           </Card>
           
+          <Card className="p-4">
+            <div className="flex flex-col h-full">
+              <div className="mb-4">
+                <BookOpen className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">
+                Guide NGAP
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4 flex-grow">
+                Aide-mémoire pour la cotation NGAP (nomenclature des actes)
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full"
+                onClick={() => handleDownloadDocument("guide_cotation")}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Télécharger
+              </Button>
+            </div>
+          </Card>
+
           <Card className="p-4">
             <div className="flex flex-col h-full">
               <div className="mb-4">
@@ -51,7 +78,7 @@ export const UsefulDocumentsCard = () => {
                 variant="outline" 
                 size="sm" 
                 className="w-full"
-                onClick={() => toast.success("Téléchargement du guide")}
+                onClick={() => handleDownloadDocument("incompatibilites")}
               >
                 <Download className="mr-2 h-4 w-4" />
                 Télécharger

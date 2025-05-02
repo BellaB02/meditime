@@ -1,46 +1,43 @@
 
 import { toast } from "sonner";
 
-// Simulation de documents téléchargeables
-const documents: Record<string, string> = {
-  "feuille_de_soins": "/documents/feuille_de_soins_vierge.pdf",
-  "aide_memoire_ngap": "/documents/aide_memoire_cotation_ngap.pdf",
-  "guide_incompatibilites": "/documents/guide_incompatibilites.pdf"
-};
-
+/**
+ * Service pour la gestion des documents statiques
+ */
 export const StaticDocumentService = {
   /**
-   * Récupère l'URL d'un document statique
+   * Télécharge un document statique
    */
-  getDocumentUrl: (documentKey: string): string | null => {
-    const documentUrl = documents[documentKey];
-    
-    if (!documentUrl) {
-      toast.error("Document non trouvé");
-      return null;
+  downloadStaticDocument: (documentType: string): void => {
+    try {
+      let documentPath = "";
+      
+      switch (documentType) {
+        case "feuille_de_soins":
+          documentPath = "/documents/feuille_de_soins_vierge.pdf";
+          break;
+        case "guide_cotation":
+          documentPath = "/documents/aide_memoire_cotation_ngap.pdf";
+          break;
+        case "incompatibilites":
+          documentPath = "/documents/guide_incompatibilites.pdf";
+          break;
+        default:
+          documentPath = "/documents/feuille_de_soins_vierge.pdf";
+      }
+      
+      // Créer un lien pour déclencher le téléchargement
+      const link = document.createElement('a');
+      link.href = documentPath;
+      link.download = `${documentType}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success("Document téléchargé avec succès");
+    } catch (error) {
+      console.error("Erreur lors du téléchargement du document:", error);
+      toast.error("Erreur lors du téléchargement du document");
     }
-    
-    return documentUrl;
-  },
-  
-  /**
-   * Simule le téléchargement d'un document statique
-   */
-  downloadStaticDocument: (documentKey: string, patientId?: string): boolean => {
-    const documentUrl = StaticDocumentService.getDocumentUrl(documentKey);
-    
-    if (!documentUrl) {
-      return false;
-    }
-    
-    const link = document.createElement('a');
-    link.href = documentUrl;
-    link.setAttribute('download', `${documentKey}${patientId ? `_${patientId}` : ''}.pdf`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast.success("Téléchargement démarré");
-    return true;
   }
 };
