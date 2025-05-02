@@ -91,24 +91,11 @@ export function useBillingService() {
     });
   };
   
-  // Get detailed billing data with patient and care information
+  // Get detailed billing data with patient information directly from Supabase
   const useDetailedBillingRecord = (recordId: string) => {
     return useQuery({
       queryKey: ['detailed-billing-record', recordId],
-      queryFn: async () => {
-        if (!recordId) return null;
-        
-        const record = await billingService.getBillingRecord(recordId);
-        if (!record) return null;
-        
-        // Fetch detailed patient information
-        const patientData = await patientsService.getPatient(record.patient_id);
-        
-        return {
-          ...record,
-          patientDetails: patientData
-        };
-      },
+      queryFn: () => billingService.getBillingDetails(recordId),
       enabled: !!recordId,
     });
   };

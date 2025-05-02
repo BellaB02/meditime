@@ -117,16 +117,18 @@ export const billingService = {
     return data;
   },
   
-  // Récupérer les détails complets pour la facturation
+  // Récupérer les détails complets pour la facturation avec les informations enrichies du patient
   getBillingDetails: async (recordId: string): Promise<any> => {
-    // Fetch the billing record with patient data
+    console.log(`Fetching detailed billing record for ${recordId}`);
+    
+    // Fetch the billing record with complete patient data
     const { data: record, error: recordError } = await supabase
       .from('billing_records')
       .select(`
         *,
         patients!inner(
           id, first_name, last_name, address, city, postal_code, 
-          social_security_number, insurance
+          social_security_number, insurance, phone, email, doctor
         )
       `)
       .eq('id', recordId)
@@ -136,6 +138,8 @@ export const billingService = {
       console.error(`Error fetching billing details for record ${recordId}:`, recordError);
       throw recordError;
     }
+    
+    console.log(`Successfully retrieved billing details for ${recordId}:`, record);
     
     return record;
   }

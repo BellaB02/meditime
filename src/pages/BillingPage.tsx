@@ -252,9 +252,14 @@ const BillingPage = () => {
 
   const handleDownloadInvoice = async (invoice: any) => {
     try {
-      const { useDetailedBillingRecord } = useBillingService();
-      const patientName = invoice.patients ? 
-        `${invoice.patients?.first_name || ""} ${invoice.patients?.last_name || ""}` : 
+      console.log("Téléchargement de la facture pour:", invoice);
+      
+      // Récupérer les détails complets depuis le service Supabase
+      const billingDetails = await billingService.getBillingDetails(invoice.id);
+      console.log("Détails complets récupérés:", billingDetails);
+      
+      const patientName = billingDetails.patients ? 
+        `${billingDetails.patients.first_name || ""} ${billingDetails.patients.last_name || ""}`.trim() : 
         "Patient";
       
       // Préparer les détails pour la facture
@@ -277,12 +282,14 @@ const BillingPage = () => {
           }))
         ],
         patientId: invoice.patient_id,
-        patientDetails: invoice.patients,
+        patientDetails: billingDetails.patients,
         paid: invoice.payment_status === "paid",
         totalAmount: parseFloat(invoice.total_amount || 0),
         majorations: invoice.majorations,
         careCode: invoice.care_code
       };
+      
+      console.log("Données préparées pour la génération PDF:", invoiceInfo);
       
       // Générer et télécharger le PDF
       const pdfDoc = PDFGenerationService.generateInvoicePDF(invoiceInfo);
@@ -298,10 +305,16 @@ const BillingPage = () => {
     }
   };
 
-  const handlePrintInvoice = (invoice: any) => {
+  const handlePrintInvoice = async (invoice: any) => {
     try {
-      const patientName = invoice.patients ? 
-        `${invoice.patients?.first_name || ""} ${invoice.patients?.last_name || ""}` : 
+      console.log("Impression de la facture pour:", invoice);
+      
+      // Récupérer les détails complets depuis le service Supabase
+      const billingDetails = await billingService.getBillingDetails(invoice.id);
+      console.log("Détails complets récupérés pour impression:", billingDetails);
+      
+      const patientName = billingDetails.patients ? 
+        `${billingDetails.patients.first_name || ""} ${billingDetails.patients.last_name || ""}`.trim() : 
         "Patient";
       
       // Préparer les détails pour la facture
@@ -324,7 +337,7 @@ const BillingPage = () => {
           }))
         ],
         patientId: invoice.patient_id,
-        patientDetails: invoice.patients,
+        patientDetails: billingDetails.patients,
         paid: invoice.payment_status === "paid",
         totalAmount: parseFloat(invoice.total_amount || 0),
         majorations: invoice.majorations,

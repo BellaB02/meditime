@@ -1,7 +1,5 @@
-
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
-import { PatientService, PatientInfo } from "./PatientService";
 import { DateFormatService } from "./DateFormatService";
 
 export interface CareInfo {
@@ -40,6 +38,9 @@ export interface InvoiceInfo {
     postal_code?: string;
     social_security_number?: string;
     insurance?: string;
+    phone?: string;
+    email?: string;
+    doctor?: string;
   };
   paid?: boolean;
   totalAmount?: number;
@@ -53,7 +54,7 @@ export const PDFGenerationService = {
    */
   generatePrefilledPDF: (patientId?: string, careInfo?: CareInfo, prescriptions?: PrescriptionInfo[]): jsPDF | null => {
     try {
-      const patientInfo = PatientService.validatePatientInfo(patientId);
+      const patientInfo = PatientService.validatePatientInfoSync(patientId);
       
       if (!patientInfo) {
         return null;
@@ -124,6 +125,8 @@ export const PDFGenerationService = {
    */
   generateInvoicePDF: (invoiceInfo: InvoiceInfo): jsPDF | null => {
     try {
+      console.log("Génération de facture PDF avec les données:", invoiceInfo);
+      
       // Créer un nouveau document PDF
       const doc = new jsPDF();
       
@@ -140,6 +143,7 @@ export const PDFGenerationService = {
       let yPosition = 40; // Position de départ pour les informations patient
       
       if (invoiceInfo.patientDetails) {
+        console.log("Données patient disponibles:", invoiceInfo.patientDetails);
         doc.setFontSize(12);
         doc.text("INFORMATIONS PATIENT", 15, yPosition);
         doc.setFontSize(10);
@@ -171,33 +175,32 @@ export const PDFGenerationService = {
           yPosition += 5;
         }
         
-        yPosition += 5; // Espace supplémentaire avant les détails
-      } else if (invoiceInfo.patientId) {
-        // Essayer de récupérer les informations du patient depuis le service en mode synchrone
-        const patientInfo = PatientService.getPatientInfoSync(invoiceInfo.patientId);
+        if (patientDetails.phone) {
+          doc.text(`Téléphone: ${patientDetails.phone}`, 15, yPosition);
+          yPosition += 5;
+        }
         
-        if (patientInfo) {
+        if (patientDetails.doctor) {
+          doc.text(`Médecin traitant: ${patientDetails.doctor}`, 15, yPosition);
+          yPosition += 5;
+        }
+        
+        yPosition += 5; // Espace supplémentaire avant les détails
+      } else {
+        console.log("Pas d'information patient disponible dans invoiceInfo.patientDetails");
+        
+        if (invoiceInfo.patientId) {
+          console.log("patientId fourni, mais pas de patientDetails:", invoiceInfo.patientId);
           doc.setFontSize(12);
           doc.text("INFORMATIONS PATIENT", 15, yPosition);
           doc.setFontSize(10);
           
           yPosition += 10;
-          const fullName = `${patientInfo.firstName || ""} ${patientInfo.name}`.trim();
-          doc.text(`Nom et Prénom: ${fullName}`, 15, yPosition);
-          
+          doc.text("Patient ID: " + invoiceInfo.patientId, 15, yPosition);
           yPosition += 5;
-          doc.text(`Adresse: ${patientInfo.address || "Non renseignée"}`, 15, yPosition);
+          doc.text("(Détails patient non disponibles)", 15, yPosition);
           
-          yPosition += 5;
-          doc.text(`N° Sécurité Sociale: ${patientInfo.socialSecurityNumber || "Non renseigné"}`, 15, yPosition);
-          
-          yPosition += 5;
-          if (patientInfo.insurance) {
-            doc.text(`Assurance: ${patientInfo.insurance}`, 15, yPosition);
-            yPosition += 5;
-          }
-          
-          yPosition += 5; // Espace supplémentaire avant les détails
+          yPosition += 10;
         }
       }
       
@@ -306,3 +309,4 @@ export const PDFGenerationService = {
     }
   }
 };
+import { PatientService } from './PatientService';
