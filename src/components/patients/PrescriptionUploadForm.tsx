@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { FileUp } from "lucide-react";
 import { PatientService } from "@/services/PatientService";
+import { PrescriptionsService } from "@/services/PrescriptionsService";
 import { PrescriptionInfo } from "@/services/PDFTypes";
 
 // Schéma de validation du formulaire
@@ -99,19 +100,20 @@ const PrescriptionUploadForm = ({ patientId, onSuccess }: PrescriptionUploadForm
       const fileUrl = URL.createObjectURL(data.file);
       
       // Créer une nouvelle ordonnance
-      const newPrescription: Omit<PrescriptionInfo, 'id'> = {
+      const newPrescription: PrescriptionInfo = {
+        id: '', // This will be assigned by the service
         name: data.name,
         dosage: data.dosage,
         frequency: data.frequency,
         startDate: data.date,
         title: data.title,
         doctor: data.doctor,
-        date: data.date,
+        date: data.date, // Ensure date is provided since it's required in Prescription
         file: fileUrl,
       };
       
       // Ajouter l'ordonnance au service
-      const prescriptionId = PatientService.addPrescription(patientId, newPrescription);
+      const prescriptionId = PrescriptionsService.addPrescription(patientId, newPrescription);
       
       // Réinitialiser le formulaire et afficher un message de succès
       form.reset({

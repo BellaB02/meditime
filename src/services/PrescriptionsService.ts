@@ -57,12 +57,15 @@ export const PrescriptionsService = {
   /**
    * Ajoute une ordonnance pour un patient
    */
-  addPrescription: (patientId: string, prescription: Omit<PrescriptionInfo, 'id'>): string => {
+  addPrescription: (patientId: string, prescription: PrescriptionInfo): string => {
     if (!prescriptionsData[patientId]) {
       prescriptionsData[patientId] = [];
     }
-    const id = `pre-${Date.now()}`;
-    const newPrescription = { id, ...prescription };
+    
+    // Make sure we have a valid ID
+    const id = prescription.id || `pre-${Date.now()}`;
+    const newPrescription = { ...prescription, id };
+    
     prescriptionsData[patientId].unshift(newPrescription);
     return id;
   }

@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { Patient, PatientService, VitalSign } from "@/services/PatientService";
+import { PatientInfo, PatientService, VitalSign } from "@/services/PatientService";
 
 interface LegacyVitalSign {
   id: string;
@@ -12,15 +13,18 @@ interface LegacyVitalSign {
 }
 
 const usePatientDetails = (patientId: string) => {
-  const [patientDetails, setPatientDetails] = useState<Patient | null>(null);
+  const [patientDetails, setPatientDetails] = useState<PatientInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   
-  const updatePatient = async (updates: Partial<Patient>) => {
+  const updatePatient = async (updates: Partial<PatientInfo>) => {
     setIsLoading(true);
     try {
-      const updatedPatient = await PatientService.updatePatient(patientId, updates);
-      setPatientDetails(updatedPatient);
+      const success = PatientService.updatePatient(patientId, updates);
+      if (success) {
+        const updatedPatient = await PatientService.getPatientInfo(patientId);
+        setPatientDetails(updatedPatient || null);
+      }
     } catch (e) {
       setError(e instanceof Error ? e : new Error("Failed to update patient"));
     } finally {
@@ -32,8 +36,8 @@ const usePatientDetails = (patientId: string) => {
     const fetchPatientDetails = async () => {
       setIsLoading(true);
       try {
-        const details = await PatientService.getPatientDetails(patientId);
-        setPatientDetails(details);
+        const details = await PatientService.getPatientInfo(patientId);
+        setPatientDetails(details || null);
       } catch (e) {
         setError(e instanceof Error ? e : new Error("Failed to fetch patient details"));
       } finally {

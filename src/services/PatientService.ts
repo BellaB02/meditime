@@ -4,6 +4,7 @@ export interface PatientInfo {
   id: string;
   name: string;
   firstName?: string;
+  lastName?: string; // Added for compatibility with other interfaces
   address?: string;
   phoneNumber?: string;
   email?: string;
@@ -145,6 +146,26 @@ export const PatientService = {
     } catch (error) {
       console.error("Erreur lors de la mise à jour du statut:", error);
       toast.error("Erreur lors de la mise à jour du statut");
+      return false;
+    }
+  },
+  
+  /**
+   * Met à jour les informations d'un patient
+   */
+  updatePatient: (patientId: string, updates: Partial<PatientInfo>): boolean => {
+    try {
+      const mockPatients = PatientService.getMockPatients();
+      if (mockPatients[patientId]) {
+        mockPatients[patientId] = { ...mockPatients[patientId], ...updates };
+        toast.success("Informations patient mises à jour");
+        return true;
+      }
+      toast.error("Patient non trouvé");
+      return false;
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour du patient:", error);
+      toast.error("Erreur lors de la mise à jour du patient");
       return false;
     }
   },
