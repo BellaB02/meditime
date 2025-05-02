@@ -104,7 +104,7 @@ function App() {
                         <Route path="/patients" element={<Patients />} />
                         <Route path="/patients/:patientId" element={<PatientFile />} />
                         <Route path="/calendar" element={<Calendar />} />
-                        <Route path="/care-sheets" element={<CareSheets />} />
+                        <Route path="/caresheets" element={<CareSheets />} />
                         <Route path="/rounds" element={<Rounds />} />
                         <Route path="/billing" element={<BillingPage />} />
                         <Route path="/settings" element={<Settings />} />
