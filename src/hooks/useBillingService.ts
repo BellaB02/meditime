@@ -2,6 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { billingService } from '@/integrations/supabase/services/billingService';
 import { toast } from 'sonner';
+import { patientsService } from '@/integrations/supabase/services/patientsService';
 
 export function useBillingService() {
   const queryClient = useQueryClient();
@@ -89,12 +90,35 @@ export function useBillingService() {
       }
     });
   };
+  
+  // Get detailed billing data with patient and care information
+  const useDetailedBillingRecord = (recordId: string) => {
+    return useQuery({
+      queryKey: ['detailed-billing-record', recordId],
+      queryFn: async () => {
+        if (!recordId) return null;
+        
+        const record = await billingService.getBillingRecord(recordId);
+        if (!record) return null;
+        
+        // Fetch detailed patient information
+        const patientData = await patientsService.getPatient(record.patient_id);
+        
+        return {
+          ...record,
+          patientDetails: patientData
+        };
+      },
+      enabled: !!recordId,
+    });
+  };
 
   return {
     useBillingRecords,
     useBillingRecord,
     useCreateBillingRecord,
     useUpdateTransmissionStatus,
-    useUpdatePaymentStatus
+    useUpdatePaymentStatus,
+    useDetailedBillingRecord
   };
 }

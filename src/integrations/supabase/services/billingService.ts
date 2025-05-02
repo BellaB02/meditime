@@ -115,5 +115,28 @@ export const billingService = {
     }
     
     return data;
+  },
+  
+  // Récupérer les détails complets pour la facturation
+  getBillingDetails: async (recordId: string): Promise<any> => {
+    // Fetch the billing record with patient data
+    const { data: record, error: recordError } = await supabase
+      .from('billing_records')
+      .select(`
+        *,
+        patients!inner(
+          id, first_name, last_name, address, city, postal_code, 
+          social_security_number, insurance
+        )
+      `)
+      .eq('id', recordId)
+      .single();
+      
+    if (recordError) {
+      console.error(`Error fetching billing details for record ${recordId}:`, recordError);
+      throw recordError;
+    }
+    
+    return record;
   }
 };

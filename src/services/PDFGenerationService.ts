@@ -32,8 +32,19 @@ export interface InvoiceInfo {
     total: number;
   }[];
   patientId?: string;
+  patientDetails?: {
+    first_name?: string;
+    last_name?: string;
+    address?: string;
+    city?: string;
+    postal_code?: string;
+    social_security_number?: string;
+    insurance?: string;
+  };
   paid?: boolean;
   totalAmount?: number;
+  majorations?: any[];
+  careCode?: string;
 }
 
 export const PDFGenerationService = {
@@ -113,9 +124,6 @@ export const PDFGenerationService = {
    */
   generateInvoicePDF: (invoiceInfo: InvoiceInfo): jsPDF | null => {
     try {
-      const patientInfo = invoiceInfo.patientId ? 
-        PatientService.validatePatientInfo(invoiceInfo.patientId) : null;
-      
       // Créer un nouveau document PDF
       const doc = new jsPDF();
       
@@ -129,31 +137,93 @@ export const PDFGenerationService = {
       doc.text(`Date: ${invoiceInfo.date}`, 15, 30);
       
       // Informations patient si disponibles
-      if (patientInfo) {
+      let yPosition = 40; // Position de départ pour les informations patient
+      
+      if (invoiceInfo.patientDetails) {
         doc.setFontSize(12);
-        doc.text("INFORMATIONS PATIENT", 15, 40);
+        doc.text("INFORMATIONS PATIENT", 15, yPosition);
         doc.setFontSize(10);
-        const fullName = `${patientInfo.firstName || ""} ${patientInfo.name}`.trim();
-        doc.text(`Nom et Prénom: ${fullName}`, 15, 50);
-        doc.text(`Adresse: ${patientInfo.address || "Non renseignée"}`, 15, 55);
-        doc.text(`N° Sécurité Sociale: ${patientInfo.socialSecurityNumber || "Non renseigné"}`, 15, 60);
+        
+        const patientDetails = invoiceInfo.patientDetails;
+        const fullName = `${patientDetails.first_name || ""} ${patientDetails.last_name || ""}`.trim();
+        
+        yPosition += 10;
+        doc.text(`Nom et Prénom: ${fullName || "Non renseigné"}`, 15, yPosition);
+        
+        yPosition += 5;
+        doc.text(`Adresse: ${patientDetails.address || "Non renseignée"}`, 15, yPosition);
+        
+        yPosition += 5;
+        const cityAndPostal = [
+          patientDetails.postal_code, 
+          patientDetails.city
+        ].filter(Boolean).join(' ');
+        if (cityAndPostal) {
+          doc.text(`Code postal et ville: ${cityAndPostal}`, 15, yPosition);
+          yPosition += 5;
+        }
+        
+        doc.text(`N° Sécurité Sociale: ${patientDetails.social_security_number || "Non renseigné"}`, 15, yPosition);
+        
+        yPosition += 5;
+        if (patientDetails.insurance) {
+          doc.text(`Assurance: ${patientDetails.insurance}`, 15, yPosition);
+          yPosition += 5;
+        }
+        
+        yPosition += 5; // Espace supplémentaire avant les détails
+      } else if (invoiceInfo.patientId) {
+        // Essayer de récupérer les informations du patient depuis le service en mode synchrone
+        const patientInfo = PatientService.getPatientInfoSync(invoiceInfo.patientId);
+        
+        if (patientInfo) {
+          doc.setFontSize(12);
+          doc.text("INFORMATIONS PATIENT", 15, yPosition);
+          doc.setFontSize(10);
+          
+          yPosition += 10;
+          const fullName = `${patientInfo.firstName || ""} ${patientInfo.name}`.trim();
+          doc.text(`Nom et Prénom: ${fullName}`, 15, yPosition);
+          
+          yPosition += 5;
+          doc.text(`Adresse: ${patientInfo.address || "Non renseignée"}`, 15, yPosition);
+          
+          yPosition += 5;
+          doc.text(`N° Sécurité Sociale: ${patientInfo.socialSecurityNumber || "Non renseigné"}`, 15, yPosition);
+          
+          yPosition += 5;
+          if (patientInfo.insurance) {
+            doc.text(`Assurance: ${patientInfo.insurance}`, 15, yPosition);
+            yPosition += 5;
+          }
+          
+          yPosition += 5; // Espace supplémentaire avant les détails
+        }
+      }
+      
+      // Type de soin si disponible
+      if (invoiceInfo.careCode) {
+        doc.text(`Type de soin: ${invoiceInfo.careCode}`, 15, yPosition);
+        yPosition += 8;
       }
       
       // Détails de la facture
       doc.setFontSize(12);
-      doc.text("DÉTAILS", 15, 75);
+      doc.text("DÉTAILS", 15, yPosition);
       
       // En-tête du tableau
+      yPosition += 10;
       doc.setFontSize(10);
-      doc.text("Description", 15, 85);
-      doc.text("Quantité", 100, 85);
-      doc.text("Prix unitaire", 130, 85);
-      doc.text("Total", 175, 85);
+      doc.text("Description", 15, yPosition);
+      doc.text("Quantité", 100, yPosition);
+      doc.text("Prix unitaire", 130, yPosition);
+      doc.text("Total", 175, yPosition);
       
-      doc.line(15, 87, 195, 87);
+      yPosition += 2;
+      doc.line(15, yPosition, 195, yPosition);
       
       // Contenu du tableau
-      let yPosition = 95;
+      yPosition += 8;
       invoiceInfo.details.forEach(detail => {
         doc.text(detail.description, 15, yPosition);
         doc.text(detail.quantity.toString(), 100, yPosition);
@@ -161,6 +231,18 @@ export const PDFGenerationService = {
         doc.text(`${detail.total.toFixed(2)} €`, 175, yPosition);
         yPosition += 8;
       });
+      
+      // Ajouter les majorations si présentes
+      if (invoiceInfo.majorations && invoiceInfo.majorations.length > 0) {
+        invoiceInfo.majorations.forEach(majoration => {
+          const description = `${majoration.code} - ${majoration.description || 'Majoration'}`;
+          doc.text(description, 15, yPosition);
+          doc.text("1", 100, yPosition);
+          doc.text(`${parseFloat(majoration.rate).toFixed(2)} €`, 130, yPosition);
+          doc.text(`${parseFloat(majoration.rate).toFixed(2)} €`, 175, yPosition);
+          yPosition += 8;
+        });
+      }
       
       // Ligne de séparation
       doc.line(15, yPosition, 195, yPosition);

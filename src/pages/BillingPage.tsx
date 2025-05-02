@@ -53,6 +53,24 @@ interface BillingFormValues {
   comment: string;
 }
 
+interface InvoiceInfo {
+  id: string;
+  date: string;
+  amount: number;
+  details: {
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }[];
+  patientId: string;
+  patientDetails: any;
+  paid: boolean;
+  totalAmount: number;
+  majorations: any[];
+  careCode: string;
+}
+
 const BillingPage = () => {
   const { user } = useAuth();
   const [selectedActs, setSelectedActs] = useState<string[]>([]);
@@ -232,12 +250,15 @@ const BillingPage = () => {
     }
   };
 
-  const handleDownloadInvoice = (invoice: any) => {
+  const handleDownloadInvoice = async (invoice: any) => {
     try {
-      const patientName = `${invoice.patients?.first_name || ""} ${invoice.patients?.last_name || ""}`;
+      const { useDetailedBillingRecord } = useBillingService();
+      const patientName = invoice.patients ? 
+        `${invoice.patients?.first_name || ""} ${invoice.patients?.last_name || ""}` : 
+        "Patient";
       
       // Préparer les détails pour la facture
-      const invoiceInfo = {
+      const invoiceInfo: InvoiceInfo = {
         id: invoice.id.substring(0, 8),
         date: format(new Date(invoice.created_at), "dd/MM/yyyy"),
         amount: parseFloat(invoice.total_amount || 0),
@@ -256,15 +277,18 @@ const BillingPage = () => {
           }))
         ],
         patientId: invoice.patient_id,
+        patientDetails: invoice.patients,
         paid: invoice.payment_status === "paid",
-        totalAmount: parseFloat(invoice.total_amount || 0)
+        totalAmount: parseFloat(invoice.total_amount || 0),
+        majorations: invoice.majorations,
+        careCode: invoice.care_code
       };
       
       // Générer et télécharger le PDF
       const pdfDoc = PDFGenerationService.generateInvoicePDF(invoiceInfo);
       if (pdfDoc) {
         PDFGenerationService.saveInvoicePDF(pdfDoc, invoiceInfo.id);
-        toast.success(`Téléchargement de la facture ${invoiceInfo.id}`);
+        toast.success(`Téléchargement de la facture ${invoiceInfo.id} pour ${patientName}`);
       } else {
         toast.error("Erreur lors de la génération du PDF");
       }
@@ -276,10 +300,12 @@ const BillingPage = () => {
 
   const handlePrintInvoice = (invoice: any) => {
     try {
-      const patientName = `${invoice.patients?.first_name || ""} ${invoice.patients?.last_name || ""}`;
+      const patientName = invoice.patients ? 
+        `${invoice.patients?.first_name || ""} ${invoice.patients?.last_name || ""}` : 
+        "Patient";
       
       // Préparer les détails pour la facture
-      const invoiceInfo = {
+      const invoiceInfo: InvoiceInfo = {
         id: invoice.id.substring(0, 8),
         date: format(new Date(invoice.created_at), "dd/MM/yyyy"),
         amount: parseFloat(invoice.total_amount || 0),
@@ -298,8 +324,11 @@ const BillingPage = () => {
           }))
         ],
         patientId: invoice.patient_id,
+        patientDetails: invoice.patients,
         paid: invoice.payment_status === "paid",
-        totalAmount: parseFloat(invoice.total_amount || 0)
+        totalAmount: parseFloat(invoice.total_amount || 0),
+        majorations: invoice.majorations,
+        careCode: invoice.care_code
       };
       
       // Générer le PDF pour impression
@@ -312,7 +341,7 @@ const BillingPage = () => {
             printWindow.onload = () => {
               printWindow.print();
             };
-            toast.success(`Impression de la facture ${invoiceInfo.id}`);
+            toast.success(`Impression de la facture ${invoiceInfo.id} pour ${patientName}`);
           } else {
             toast.error("Impossible d'ouvrir la fenêtre d'impression");
           }
@@ -651,7 +680,7 @@ const BillingPage = () => {
                   {billingRecords.map((record) => {
                     const patientName = record.patients ? 
                       `${record.patients.first_name} ${record.patients.last_name}` : 
-                      "Patient inconnu";
+                      "Patient";
                     
                     return (
                       <TableRow key={record.id}>
