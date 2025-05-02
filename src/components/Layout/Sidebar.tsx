@@ -83,8 +83,9 @@ const Sidebar = () => {
           </li>
           <li>
             <NavLink 
-              to="/admin/billing" 
+              to="/billing" 
               className={({isActive}) => cn('nav-link', isActive && 'active')}
+              end
             >
               <Receipt size={20} />
               {isOpen && <span>Facturation</span>}

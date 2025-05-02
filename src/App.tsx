@@ -109,6 +109,9 @@ function App() {
                         <Route path="/billing" element={<BillingPage />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path="/practice" element={<Practice />} />
+                        
+                        {/* Ajouter la route /admin/billing qui pointe vers BillingPage */}
+                        <Route path="/admin/billing" element={<BillingPage />} />
                       </Route>
                     </Route>
                     

@@ -22,6 +22,7 @@ const getTitleFromPath = (pathname: string): string => {
     case '/admin':
       return 'Administratif';
     case '/admin/billing':
+    case '/billing':
       return 'Facturation';
     case '/caresheets':
       return 'Feuilles de soins';

@@ -57,6 +57,10 @@ export function SidebarLinks({ onSelect }: { onSelect?: () => void }) {
     if (path === "/") {
       return pathname === path;
     }
+    // Pour la facturation, on considère actifs les deux chemins /billing et /admin/billing
+    if (path === "/billing") {
+      return pathname === "/billing" || pathname === "/admin/billing";
+    }
     return pathname.startsWith(path);
   };
   
@@ -69,7 +73,7 @@ export function SidebarLinks({ onSelect }: { onSelect?: () => void }) {
     { to: "/care-protocols", label: "Protocoles", icon: <FileCheck size={20} /> },
     { to: "/patient-messages", label: "Messages", icon: <MessageSquare size={20} /> },
     { to: "/inventory", label: "Inventaire", icon: <Package size={20} /> },
-    { to: "/admin/billing", label: "Facturation", icon: <DollarSign size={20} /> },
+    { to: "/billing", label: "Facturation", icon: <DollarSign size={20} /> }, // Changé de /admin/billing à /billing
     { to: "/practice", label: "Cabinet", icon: <LayoutGrid size={20} /> },
     { to: "/patient-portal", label: "Portail Patient", icon: <User size={20} /> },
     { to: "/settings", label: "Paramètres", icon: <Settings size={20} /> },
