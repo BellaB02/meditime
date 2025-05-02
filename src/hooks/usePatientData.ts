@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { PatientInfo, PatientService, VitalSign } from "@/services/PatientService";
+import { PatientInfo, VitalSign, PatientService } from "@/services/PatientService";
 
 interface LegacyVitalSign {
   id: string;
