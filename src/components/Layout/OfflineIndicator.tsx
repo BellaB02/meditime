@@ -15,21 +15,36 @@ const OfflineIndicator: React.FC = () => {
     // Different listeners depending on platform
     if (isMobileApp) {
       // Mobile app - use Capacitor Network API
-      import('@capacitor/network').then(({ Network }) => {
-        // Initial status check
-        Network.getStatus().then(status => {
+      let cleanup: (() => void) | undefined;
+      
+      const setupNetwork = async () => {
+        try {
+          const { Network } = await import('@capacitor/network');
+          
+          // Initial status check
+          const status = await Network.getStatus();
           setIsOffline(!status.connected);
-        });
-        
-        // Listen for changes
-        const listener = Network.addListener('networkStatusChange', status => {
-          setIsOffline(!status.connected);
-        });
-        
-        return () => {
-          listener.remove();
-        };
-      });
+          
+          // Listen for changes
+          const listener = Network.addListener('networkStatusChange', status => {
+            setIsOffline(!status.connected);
+          });
+          
+          cleanup = () => {
+            listener.remove();
+          };
+        } catch (error) {
+          console.error("Error setting up network monitoring:", error);
+          // Fallback to browser API if Capacitor fails
+          setIsOffline(!navigator.onLine);
+        }
+      };
+      
+      setupNetwork();
+      
+      return () => {
+        if (cleanup) cleanup();
+      };
     } else {
       // Web app - use browser events
       const handleOnline = () => setIsOffline(false);
