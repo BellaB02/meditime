@@ -18,7 +18,7 @@ export const MobileService = {
       });
       
       // Set up network status listener for mobile
-      Network.addListener('networkStatusChange', status => {
+      const listenerHandle = await Network.addListener('networkStatusChange', status => {
         if (status.connected) {
           const { toast } = require("sonner");
           toast.success("Connexion rétablie", {

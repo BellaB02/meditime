@@ -6,16 +6,19 @@ import { Button } from "@/components/ui/button";
 import { OfflineService } from "@/services/OfflineService";
 import { MobileService } from "@/services/MobileService";
 
-// Type declaration pour éviter les erreurs TypeScript
+// Type definition for Capacitor's PluginListenerHandle 
+interface PluginListenerHandle {
+  remove: () => void;
+}
+
+// Updated Network interface to match actual Capacitor implementation
 interface NetworkStatus {
   connected: boolean;
 }
 
 interface NetworkPlugin {
   getStatus(): Promise<NetworkStatus>;
-  addListener(eventName: string, callback: (status: NetworkStatus) => void): {
-    remove: () => void;
-  };
+  addListener(eventName: string, callback: (status: NetworkStatus) => void): Promise<PluginListenerHandle>;
 }
 
 const OfflineIndicator: React.FC = () => {
@@ -33,19 +36,20 @@ const OfflineIndicator: React.FC = () => {
         try {
           // Import dynamique pour éviter les erreurs au build
           const capacitorNetwork = await import('@capacitor/network');
-          const Network = capacitorNetwork.Network as NetworkPlugin;
+          const Network = capacitorNetwork.Network as unknown as NetworkPlugin;
           
           // Initial status check
           const status = await Network.getStatus();
           setIsOffline(!status.connected);
           
           // Listen for changes
-          const listener = Network.addListener('networkStatusChange', status => {
+          const listenerHandle = await Network.addListener('networkStatusChange', status => {
             setIsOffline(!status.connected);
           });
           
           cleanup = () => {
-            listener.remove();
+            // Use the remove method from the handle
+            listenerHandle.remove();
           };
         } catch (error) {
           console.error("Error setting up network monitoring:", error);
