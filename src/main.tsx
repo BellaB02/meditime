@@ -6,6 +6,7 @@ import { MobileService } from './services/MobileService'
 
 // Initialize mobile services if running as a native app
 if (MobileService.isMobileApp()) {
+  console.log("Initializing mobile services...");
   MobileService.init().catch(error => {
     console.error("Failed to initialize mobile services:", error);
   });

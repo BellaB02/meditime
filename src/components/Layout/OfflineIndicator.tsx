@@ -6,6 +6,18 @@ import { Button } from "@/components/ui/button";
 import { OfflineService } from "@/services/OfflineService";
 import { MobileService } from "@/services/MobileService";
 
+// Type declaration pour éviter les erreurs TypeScript
+interface NetworkStatus {
+  connected: boolean;
+}
+
+interface NetworkPlugin {
+  getStatus(): Promise<NetworkStatus>;
+  addListener(eventName: string, callback: (status: NetworkStatus) => void): {
+    remove: () => void;
+  };
+}
+
 const OfflineIndicator: React.FC = () => {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [pendingSyncs, setPendingSyncs] = useState(0);
@@ -19,7 +31,9 @@ const OfflineIndicator: React.FC = () => {
       
       const setupNetwork = async () => {
         try {
-          const { Network } = await import('@capacitor/network');
+          // Import dynamique pour éviter les erreurs au build
+          const capacitorNetwork = await import('@capacitor/network');
+          const Network = capacitorNetwork.Network as NetworkPlugin;
           
           // Initial status check
           const status = await Network.getStatus();
@@ -37,6 +51,18 @@ const OfflineIndicator: React.FC = () => {
           console.error("Error setting up network monitoring:", error);
           // Fallback to browser API if Capacitor fails
           setIsOffline(!navigator.onLine);
+          
+          // Set up browser event listeners as fallback
+          const handleOnline = () => setIsOffline(false);
+          const handleOffline = () => setIsOffline(true);
+          
+          window.addEventListener("online", handleOnline);
+          window.addEventListener("offline", handleOffline);
+          
+          cleanup = () => {
+            window.removeEventListener("online", handleOnline);
+            window.removeEventListener("offline", handleOffline);
+          };
         }
       };
       
