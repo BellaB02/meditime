@@ -1,0 +1,22 @@
+
+{
+  "name": "Meditime Pro",
+  "short_name": "Meditime",
+  "theme_color": "#2E8BC0",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "lovable-uploads/f32c5bf3-0b98-449e-8874-7a5665e67228.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "lovable-uploads/f32c5bf3-0b98-449e-8874-7a5665e67228.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

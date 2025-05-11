@@ -4,18 +4,48 @@ import { AlertCircle, WifiOff } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { OfflineService } from "@/services/OfflineService";
+import { MobileService } from "@/services/MobileService";
 
 const OfflineIndicator: React.FC = () => {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [pendingSyncs, setPendingSyncs] = useState(0);
+  const isMobileApp = MobileService.isMobileApp();
   
   useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-    
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-    
+    // Different listeners depending on platform
+    if (isMobileApp) {
+      // Mobile app - use Capacitor Network API
+      import('@capacitor/network').then(({ Network }) => {
+        // Initial status check
+        Network.getStatus().then(status => {
+          setIsOffline(!status.connected);
+        });
+        
+        // Listen for changes
+        const listener = Network.addListener('networkStatusChange', status => {
+          setIsOffline(!status.connected);
+        });
+        
+        return () => {
+          listener.remove();
+        };
+      });
+    } else {
+      // Web app - use browser events
+      const handleOnline = () => setIsOffline(false);
+      const handleOffline = () => setIsOffline(true);
+      
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
+      
+      return () => {
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+      };
+    }
+  }, [isMobileApp]);
+  
+  useEffect(() => {
     const checkPendingSyncs = async () => {
       try {
         const syncs = await OfflineService.getPendingSyncs();
@@ -32,8 +62,6 @@ const OfflineIndicator: React.FC = () => {
     const interval = setInterval(checkPendingSyncs, 30000); // Check every 30 seconds
     
     return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
       clearInterval(interval);
     };
   }, []);
